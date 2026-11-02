@@ -1,0 +1,80 @@
+{
+  "schema_version": 1,
+  "scan_id": "d042c112d5467c682ab4453fe5d77820",
+  "collected_at": "2026-11-02T08:28:58.9394446Z",
+  "collector_version": "0.1.0",
+  "device": {
+    "computer_name": {
+      "value": "DESKTOP-1MG83N3",
+      "raw": "DESKTOP-1MG83N3",
+      "source": "os.Hostname",
+      "status": "collected"
+    },
+    "manufacturer": {
+      "value": "Default string",
+      "raw": "Default string",
+      "source": "WMI Win32_ComputerSystem.Manufacturer",
+      "status": "template",
+      "observations": [
+        {
+          "value": "Default string",
+          "raw": "Default string",
+          "source": "WMI Win32_ComputerSystem.Manufacturer",
+          "status": "template"
+        },
+        {
+          "value": "Default string",
+          "raw": "Default string",
+          "source": "HKLM\\HARDWARE\\DESCRIPTION\\System\\BIOS\\SystemManufacturer",
+          "status": "template"
+        }
+      ]
+    },
+    "model": {
+      "value": "Default string",
+      "raw": "Default string",
+      "source": "WMI Win32_ComputerSystem.Model",
+      "status": "template",
+      "observations": [
+        {
+          "value": "Default string",
+          "raw": "Default string",
+          "source": "WMI Win32_ComputerSystem.Model",
+          "status": "template"
+        },
+        {
+          "value": "Default string",
+          "raw": "Default string",
+          "source": "HKLM\\HARDWARE\\DESCRIPTION\\System\\BIOS\\SystemProductName",
+          "status": "template"
+        }
+      ]
+    },
+    "serial_number": {
+      "value": "Default string",
+      "raw": "Default string",
+      "source": "WMI Win32_BIOS.SerialNumber",
+      "status": "template",
+      "observations": [
+        {
+          "value": "Default string",
+          "raw": "Default string",
+          "source": "WMI Win32_BIOS.SerialNumber",
+          "status": "template"
+        },
+        {
+          "raw": "The system cannot find the file specified.",
+          "source": "HKLM\\HARDWARE\\DESCRIPTION\\System\\BIOS\\SystemSerialNumber",
+          "status": "unavailable"
+        }
+      ]
+    },
+    "os": {
+      "value": "Windows",
+      "raw": "Microsoft Windows [Version 10.0.19045.6456]",
+      "source": "cmd.exe /d /c ver",
+      "status": "collected"
+    },
+    "components": []
+  }
+}

@@ -1,0 +1,238 @@
+{
+  "schema_version": 1,
+  "scan_id": "bae7e85873554dc56a5f7c3cbac15da0",
+  "collected_at": "2026-11-02T09:04:19.4433011Z",
+  "collector_version": "0.1.0",
+  "device": {
+    "computer_name": {
+      "value": "DESKTOP-1MG83N3",
+      "raw": "DESKTOP-1MG83N3",
+      "source": "os.Hostname",
+      "status": "collected"
+    },
+    "manufacturer": {
+      "value": "Default string",
+      "raw": "Default string",
+      "source": "WMI Win32_ComputerSystem.Manufacturer",
+      "status": "template",
+      "observations": [
+        {
+          "value": "Default string",
+          "raw": "Default string",
+          "source": "WMI Win32_ComputerSystem.Manufacturer",
+          "status": "template"
+        },
+        {
+          "value": "Default string",
+          "raw": "Default string",
+          "source": "HKLM\\HARDWARE\\DESCRIPTION\\System\\BIOS\\SystemManufacturer",
+          "status": "template"
+        }
+      ]
+    },
+    "model": {
+      "value": "Default string",
+      "raw": "Default string",
+      "source": "WMI Win32_ComputerSystem.Model",
+      "status": "template",
+      "observations": [
+        {
+          "value": "Default string",
+          "raw": "Default string",
+          "source": "WMI Win32_ComputerSystem.Model",
+          "status": "template"
+        },
+        {
+          "value": "Default string",
+          "raw": "Default string",
+          "source": "HKLM\\HARDWARE\\DESCRIPTION\\System\\BIOS\\SystemProductName",
+          "status": "template"
+        }
+      ]
+    },
+    "serial_number": {
+      "value": "Default string",
+      "raw": "Default string",
+      "source": "WMI Win32_BIOS.SerialNumber",
+      "status": "template",
+      "observations": [
+        {
+          "value": "Default string",
+          "raw": "Default string",
+          "source": "WMI Win32_BIOS.SerialNumber",
+          "status": "template"
+        },
+        {
+          "raw": "The system cannot find the file specified.",
+          "source": "HKLM\\HARDWARE\\DESCRIPTION\\System\\BIOS\\SystemSerialNumber",
+          "status": "unavailable"
+        }
+      ]
+    },
+    "os": {
+      "value": "Windows",
+      "raw": "Microsoft Windows [Version 10.0.19045.6456]",
+      "source": "cmd.exe /d /c ver",
+      "status": "collected"
+    },
+    "components": [
+      {
+        "type": "processor",
+        "name": {
+          "value": "Intel(R) Core(TM) i3-7100 CPU @ 3.90GHz",
+          "raw": "Intel(R) Core(TM) i3-7100 CPU @ 3.90GHz",
+          "source": "WMI Win32_Processor.Name",
+          "status": "collected",
+          "observations": [
+            {
+              "value": "Intel(R) Core(TM) i3-7100 CPU @ 3.90GHz",
+              "raw": "Intel(R) Core(TM) i3-7100 CPU @ 3.90GHz",
+              "source": "WMI Win32_Processor.Name",
+              "status": "collected"
+            }
+          ]
+        },
+        "manufacturer": {
+          "value": "GenuineIntel",
+          "raw": "GenuineIntel",
+          "source": "WMI Win32_Processor.Manufacturer",
+          "status": "collected",
+          "observations": [
+            {
+              "value": "GenuineIntel",
+              "raw": "GenuineIntel",
+              "source": "WMI Win32_Processor.Manufacturer",
+              "status": "collected"
+            }
+          ]
+        },
+        "model": {
+          "value": "",
+          "status": "not_collected"
+        },
+        "serial_number": {
+          "value": "",
+          "status": "not_collected"
+        }
+      },
+      {
+        "type": "disk",
+        "name": {
+          "value": "\\\\.\\PHYSICALDRIVE0",
+          "raw": "\\\\.\\PHYSICALDRIVE0",
+          "source": "WMI Win32_DiskDrive.Name",
+          "status": "collected",
+          "observations": [
+            {
+              "value": "\\\\.\\PHYSICALDRIVE0",
+              "raw": "\\\\.\\PHYSICALDRIVE0",
+              "source": "WMI Win32_DiskDrive.Name",
+              "status": "collected"
+            }
+          ]
+        },
+        "manufacturer": {
+          "value": "(Стандартные дисковые накопители)",
+          "raw": "(Стандартные дисковые накопители)",
+          "source": "WMI Win32_DiskDrive.Manufacturer",
+          "status": "collected",
+          "observations": [
+            {
+              "value": "(Стандартные дисковые накопители)",
+              "raw": "(Стандартные дисковые накопители)",
+              "source": "WMI Win32_DiskDrive.Manufacturer",
+              "status": "collected"
+            }
+          ]
+        },
+        "model": {
+          "value": "KINGSTON SA400S37480G",
+          "raw": "KINGSTON SA400S37480G",
+          "source": "WMI Win32_DiskDrive.Model",
+          "status": "collected",
+          "observations": [
+            {
+              "value": "KINGSTON SA400S37480G",
+              "raw": "KINGSTON SA400S37480G",
+              "source": "WMI Win32_DiskDrive.Model",
+              "status": "collected"
+            }
+          ]
+        },
+        "serial_number": {
+          "value": "50026B73824918B5",
+          "raw": "50026B73824918B5",
+          "source": "WMI Win32_DiskDrive.SerialNumber",
+          "status": "collected",
+          "observations": [
+            {
+              "value": "50026B73824918B5",
+              "raw": "50026B73824918B5",
+              "source": "WMI Win32_DiskDrive.SerialNumber",
+              "status": "collected"
+            }
+          ]
+        }
+      },
+      {
+        "type": "disk",
+        "name": {
+          "value": "\\\\.\\PHYSICALDRIVE1",
+          "raw": "\\\\.\\PHYSICALDRIVE1",
+          "source": "WMI Win32_DiskDrive.Name",
+          "status": "collected",
+          "observations": [
+            {
+              "value": "\\\\.\\PHYSICALDRIVE1",
+              "raw": "\\\\.\\PHYSICALDRIVE1",
+              "source": "WMI Win32_DiskDrive.Name",
+              "status": "collected"
+            }
+          ]
+        },
+        "manufacturer": {
+          "value": "(Стандартные дисковые накопители)",
+          "raw": "(Стандартные дисковые накопители)",
+          "source": "WMI Win32_DiskDrive.Manufacturer",
+          "status": "collected",
+          "observations": [
+            {
+              "value": "(Стандартные дисковые накопители)",
+              "raw": "(Стандартные дисковые накопители)",
+              "source": "WMI Win32_DiskDrive.Manufacturer",
+              "status": "collected"
+            }
+          ]
+        },
+        "model": {
+          "value": "SSD 480GB",
+          "raw": "SSD 480GB",
+          "source": "WMI Win32_DiskDrive.Model",
+          "status": "collected",
+          "observations": [
+            {
+              "value": "SSD 480GB",
+              "raw": "SSD 480GB",
+              "source": "WMI Win32_DiskDrive.Model",
+              "status": "collected"
+            }
+          ]
+        },
+        "serial_number": {
+          "value": "SN-on-the-lable",
+          "raw": "SN-on-the-lable",
+          "source": "WMI Win32_DiskDrive.SerialNumber",
+          "status": "collected",
+          "observations": [
+            {
+              "value": "SN-on-the-lable",
+              "raw": "SN-on-the-lable",
+              "source": "WMI Win32_DiskDrive.SerialNumber",
+              "status": "collected"
+            }
+          ]
+        }
+      }
+    ]
+  }
+}

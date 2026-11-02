@@ -1,0 +1,2 @@
+go build -o GoRigCollector.exe ./cmd/gorig-collector
+go build -o GoRigBase.exe ./cmd/gorig-base

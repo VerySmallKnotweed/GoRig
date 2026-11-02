@@ -1,0 +1,120 @@
+{
+  "schema_version": 1,
+  "scan_id": "3c81ada5f9e7648631f8c238b50d3e3d",
+  "collected_at": "2026-11-02T08:54:39.223019Z",
+  "collector_version": "0.1.0",
+  "device": {
+    "computer_name": {
+      "value": "DESKTOP-1MG83N3",
+      "raw": "DESKTOP-1MG83N3",
+      "source": "os.Hostname",
+      "status": "collected"
+    },
+    "manufacturer": {
+      "value": "Default string",
+      "raw": "Default string",
+      "source": "WMI Win32_ComputerSystem.Manufacturer",
+      "status": "template",
+      "observations": [
+        {
+          "value": "Default string",
+          "raw": "Default string",
+          "source": "WMI Win32_ComputerSystem.Manufacturer",
+          "status": "template"
+        },
+        {
+          "value": "Default string",
+          "raw": "Default string",
+          "source": "HKLM\\HARDWARE\\DESCRIPTION\\System\\BIOS\\SystemManufacturer",
+          "status": "template"
+        }
+      ]
+    },
+    "model": {
+      "value": "Default string",
+      "raw": "Default string",
+      "source": "WMI Win32_ComputerSystem.Model",
+      "status": "template",
+      "observations": [
+        {
+          "value": "Default string",
+          "raw": "Default string",
+          "source": "WMI Win32_ComputerSystem.Model",
+          "status": "template"
+        },
+        {
+          "value": "Default string",
+          "raw": "Default string",
+          "source": "HKLM\\HARDWARE\\DESCRIPTION\\System\\BIOS\\SystemProductName",
+          "status": "template"
+        }
+      ]
+    },
+    "serial_number": {
+      "value": "Default string",
+      "raw": "Default string",
+      "source": "WMI Win32_BIOS.SerialNumber",
+      "status": "template",
+      "observations": [
+        {
+          "value": "Default string",
+          "raw": "Default string",
+          "source": "WMI Win32_BIOS.SerialNumber",
+          "status": "template"
+        },
+        {
+          "raw": "The system cannot find the file specified.",
+          "source": "HKLM\\HARDWARE\\DESCRIPTION\\System\\BIOS\\SystemSerialNumber",
+          "status": "unavailable"
+        }
+      ]
+    },
+    "os": {
+      "value": "Windows",
+      "raw": "Microsoft Windows [Version 10.0.19045.6456]",
+      "source": "cmd.exe /d /c ver",
+      "status": "collected"
+    },
+    "components": [
+      {
+        "type": "processor",
+        "name": {
+          "value": "Intel(R) Core(TM) i3-7100 CPU @ 3.90GHz",
+          "raw": "Intel(R) Core(TM) i3-7100 CPU @ 3.90GHz",
+          "source": "WMI Win32_Processor.Name",
+          "status": "collected",
+          "observations": [
+            {
+              "value": "Intel(R) Core(TM) i3-7100 CPU @ 3.90GHz",
+              "raw": "Intel(R) Core(TM) i3-7100 CPU @ 3.90GHz",
+              "source": "WMI Win32_Processor.Name",
+              "status": "collected"
+            }
+          ]
+        },
+        "manufacturer": {
+          "value": "GenuineIntel",
+          "raw": "GenuineIntel",
+          "source": "WMI Win32_Processor.Manufacturer",
+          "status": "collected",
+          "observations": [
+            {
+              "value": "GenuineIntel",
+              "raw": "GenuineIntel",
+              "source": "WMI Win32_Processor.Manufacturer",
+              "status": "collected"
+            }
+          ]
+        },
+        "model": {
+          "value": "",
+          "status": "not_collected"
+        },
+        "serial_number": {
+          "value": "",
+          "status": "not_collected"
+        }
+      }
+    ]
+  }
+}
