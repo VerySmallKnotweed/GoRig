@@ -51,6 +51,11 @@ func summary(r report.Report) map[string]string {
 		"Серийный номер компьютера": value(d.SerialNumber),
 		"Операционная система":      osName,
 	}
+	for key, attribute := range d.Attributes {
+		if v := value(attribute); v != "" {
+			result["Компьютер: "+attributeLabel(key)] = v
+		}
+	}
 	groups := map[string][]string{}
 	for _, c := range d.Components {
 		parts := []string{}
@@ -95,6 +100,10 @@ func componentLabel(kind string) string {
 		return "материнские платы"
 	case "video":
 		return "видеоконтроллеры"
+	case "network":
+		return "сетевые адаптеры"
+	case "bios":
+		return "BIOS"
 	default:
 		return kind
 	}
@@ -110,6 +119,30 @@ func attributeLabel(key string) string {
 		return "Версия драйвера"
 	case "pnp_device_id":
 		return "PNP ID"
+	case "total_memory_bytes":
+		return "Доступная системе физическая память, байт"
+	case "windows_name":
+		return "Редакция Windows"
+	case "windows_version":
+		return "Версия Windows"
+	case "windows_architecture":
+		return "Архитектура Windows"
+	case "windows_install_date":
+		return "Дата установки Windows"
+	case "cores":
+		return "Физические ядра"
+	case "logical_processors":
+		return "Логические процессоры"
+	case "max_clock_mhz":
+		return "Макс. частота, МГц"
+	case "interface_type":
+		return "Интерфейс"
+	case "media_type":
+		return "Тип носителя (WMI)"
+	case "mac_address":
+		return "MAC-адрес"
+	case "release_date":
+		return "Дата выпуска"
 	default:
 		return key
 	}

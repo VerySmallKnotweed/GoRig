@@ -28,6 +28,7 @@ func Collect(collectorVersion string) (report.Report, error) {
 	}
 
 	result.Device.OS = collectOS()
+	result.Device.Attributes = collectDeviceAttributes()
 
 	result.Device.Manufacturer,
 		result.Device.Model,
@@ -41,6 +42,8 @@ func Collect(collectorVersion string) (report.Report, error) {
 	result.Device.Components = append(result.Device.Components, collectMemory()...)
 	result.Device.Components = append(result.Device.Components, collectBaseboards()...)
 	result.Device.Components = append(result.Device.Components, collectVideoControllers()...)
+	result.Device.Components = append(result.Device.Components, collectNetworkAdapters()...)
+	result.Device.Components = append(result.Device.Components, collectFirmware()...)
 
 	return result, nil
 }

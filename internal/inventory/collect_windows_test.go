@@ -182,3 +182,54 @@ func TestCollectionContinuesAfterCategoryError(t *testing.T) {
 		t.Fatalf("empty status: %s", got)
 	}
 }
+
+func TestExtendedInventory(t *testing.T) {
+	previous := queryInventory
+	t.Cleanup(func() { queryInventory = previous })
+	queryInventory = func(query string, dst interface{}) error {
+		switch result := dst.(type) {
+		case *[]computerMemoryWMI:
+			*result = []computerMemoryWMI{{TotalPhysicalMemory: 17179869184}}
+		case *[]osDetailsWMI:
+			*result = []osDetailsWMI{{Caption: "Windows 11 Pro", Version: "10.0", OSArchitecture: "64-bit", InstallDate: "20240625120100.000000+180"}}
+		case *[]processorWMI:
+			*result = []processorWMI{{Name: "CPU", NumberOfCores: 4, NumberOfLogicalProcessors: 8, MaxClockSpeed: 3200}}
+		case *[]diskDriveWMI:
+			*result = []diskDriveWMI{{Model: "SSD", Size: 1000204886016, InterfaceType: "SCSI"}}
+		case *[]networkAdapterWMI:
+			*result = []networkAdapterWMI{{Name: "Ethernet", MACAddress: " aa:bb:cc:dd:ee:ff ", PhysicalAdapter: true}, {Name: "Virtual", PhysicalAdapter: false}}
+		case *[]firmwareWMI:
+			*result = []firmwareWMI{{Name: "BIOS", SMBIOSBIOSVersion: "1.2", ReleaseDate: "20220513000000.000000+000"}}
+		default:
+			return fmt.Errorf("unexpected query %s", query)
+		}
+		return nil
+	}
+	d := collectDeviceAttributes()
+	if d["total_memory_bytes"].Value != "17179869184" || d["windows_install_date"].Value != "2024-06-25" || d["windows_install_date"].Raw != "20240625120100.000000+180" {
+		t.Fatalf("device: %+v", d)
+	}
+	cpus := collectProcessors()
+	if len(cpus) != 1 || cpus[0].Attributes["cores"].Value != "4" || cpus[0].Attributes["logical_processors"].Value != "8" {
+		t.Fatalf("cpus: %+v", cpus)
+	}
+	disks := collectDiskDrives()
+	if len(disks) != 1 || disks[0].Attributes["capacity_bytes"].Value != "1000204886016" {
+		t.Fatalf("disks: %+v", disks)
+	}
+	adapters := collectNetworkAdapters()
+	if len(adapters) != 1 || adapters[0].Attributes["mac_address"].Value != "AA:BB:CC:DD:EE:FF" || adapters[0].Attributes["mac_address"].Raw != " aa:bb:cc:dd:ee:ff " {
+		t.Fatalf("adapters: %+v", adapters)
+	}
+	bios := collectFirmware()
+	if len(bios) != 1 || bios[0].Attributes["release_date"].Value != "2022-05-13" {
+		t.Fatalf("bios: %+v", bios)
+	}
+}
+
+func TestInvalidWMIDateIsPreserved(t *testing.T) {
+	v := wmiDate("unknown-date", "WMI")
+	if v.Status != "unavailable" || len(v.Observations) != 1 || v.Observations[0].Raw != "unknown-date" {
+		t.Fatalf("date: %+v", v)
+	}
+}

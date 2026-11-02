@@ -65,14 +65,23 @@ func (s *server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			history, err := s.store.History(id)
 			respond(w, history, err)
 			return
+		case http.MethodDelete:
+			// Require a JSON request body as an extra CSRF safeguard.
+			var req struct{}
+			if !readJSON(w, r, &req) {
+				return
+			}
+			respond(w, map[string]bool{"ok": true}, s.store.Delete(id))
+			return
 		case http.MethodPut:
 			var req struct {
-				Notes string `json:"notes"`
+				Notes  string  `json:"notes"`
+				Status *string `json:"status"`
 			}
 			if !readJSON(w, r, &req) {
 				return
 			}
-			respond(w, map[string]bool{"ok": true}, s.store.SaveNotes(id, req.Notes))
+			respond(w, map[string]bool{"ok": true}, s.store.SaveDetails(id, req.Notes, req.Status))
 			return
 		}
 	}

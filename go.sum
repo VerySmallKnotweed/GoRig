@@ -1,5 +1,11 @@
 github.com/go-ole/go-ole v1.2.6 h1:/Fpf6oFPoeFik9ty7siob0G6Ke8QvQEuVcuChpwXzpY=
 github.com/go-ole/go-ole v1.2.6/go.mod h1:pprOEPIfldk/42T2oK7lQ4v4JSDwmV0As9GaiUsvbm0=
+github.com/go-webgpu/goffi v0.6.3 h1:p4gKGikHBAQ/8iUiew9MV4C5M1ZGIsk8QGFGuJjMj+A=
+github.com/go-webgpu/goffi v0.6.3/go.mod h1:wfoxNsJkU+5RFbV1kNN1kunhc1lFHuJKK3zpgx08/uM=
+github.com/godbus/dbus/v5 v5.2.2 h1:TUR3TgtSVDmjiXOgAAyaZbYmIeP3DPkld3jgKGV8mXQ=
+github.com/godbus/dbus/v5 v5.2.2/go.mod h1:3AAv2+hPq5rdnr5txxxRwiGjPXamgoIHgz9FPBfOp3c=
+github.com/gogpu/systray v0.3.0 h1:1kbYI/XujAvbwaVs/4o/UAjSNW8DMgsGoBeACKTH+S0=
+github.com/gogpu/systray v0.3.0/go.mod h1:aoA1tAjYSKH/iVc761t7IVDOaTRYmOwglbcbpcLF1v0=
 github.com/ncruces/go-sqlite3 v0.25.0 h1:trugKUs98Zwy9KwRr/EUxZHL92LYt7UqcKqAfpGpK+I=
 github.com/ncruces/go-sqlite3 v0.25.0/go.mod h1:n6Z7036yFilJx04yV0mi5JWaF66rUmXn1It9Ux8dx68=
 github.com/ncruces/julianday v1.0.0 h1:fH0OKwa7NWvniGQtxdJRxAgkBMolni2BjDHaWTxqt7M=
@@ -12,3 +18,5 @@ golang.org/x/sys v0.0.0-20190916202348-b4ddaad3f8a3 h1:7TYNF4UdlohbFwpNH04CoPMp1
 golang.org/x/sys v0.0.0-20190916202348-b4ddaad3f8a3/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
 golang.org/x/sys v0.31.0 h1:ioabZlmFYtWhL+TRYpcnNlLwhyxaM9kWTDEmfnprqik=
 golang.org/x/sys v0.31.0/go.mod h1:BJP2sWEmIv4KK5OTEluFJCKSidICx8ciO85XgH3Ak8k=
+golang.org/x/sys v0.47.0 h1:o7XGOvZQCADBQQ4Y7VNq2dRWQR7JmOUW8Kxx4ZsNgWs=
+golang.org/x/sys v0.47.0/go.mod h1:4GL1E5IUh+htKOUEOaiffhrAeqysfVGipDYzABqnCmw=

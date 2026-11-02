@@ -22,6 +22,7 @@ type Asset struct {
 	ID       int64  `json:"id"`
 	Name     string `json:"name"`
 	Notes    string `json:"notes"`
+	Status   string `json:"status"`
 	LatestAt string `json:"latest_at"`
 	Count    int    `json:"count"`
 }
@@ -47,10 +48,54 @@ func Open(path string) (*Store, error) {
 	}
 	db.SetMaxOpenConns(1)
 	_, err = db.Exec(`PRAGMA foreign_keys=ON;
-CREATE TABLE IF NOT EXISTS assets (id INTEGER PRIMARY KEY, name TEXT NOT NULL, notes TEXT NOT NULL DEFAULT '');
+CREATE TABLE IF NOT EXISTS assets (id INTEGER PRIMARY KEY, name TEXT NOT NULL, notes TEXT NOT NULL DEFAULT '', status TEXT NOT NULL DEFAULT 'in_use');
 CREATE TABLE IF NOT EXISTS inspections (id INTEGER PRIMARY KEY, asset_id INTEGER NOT NULL REFERENCES assets(id), scan_id TEXT NOT NULL UNIQUE, collected_at TEXT NOT NULL, imported_at TEXT NOT NULL, report_json TEXT NOT NULL);
 CREATE INDEX IF NOT EXISTS inspections_asset ON inspections(asset_id, id);`)
 	if err != nil {
+		db.Close()
+		return nil, err
+	}
+	// Existing databases predate the status column. The migration is additive;
+	// all existing computers remain in use, with history and notes untouched.
+	rows, err := db.Query("PRAGMA table_info(assets)")
+	if err != nil {
+		db.Close()
+		return nil, err
+	}
+	hasStatus := false
+	for rows.Next() {
+		var cid, notNull, primaryKey int
+		var name, typ string
+		var defaultValue any
+		if err := rows.Scan(&cid, &name, &typ, &notNull, &defaultValue, &primaryKey); err != nil {
+			rows.Close()
+			db.Close()
+			return nil, err
+		}
+		if name == "status" {
+			hasStatus = true
+		}
+	}
+	if err := rows.Err(); err != nil {
+		rows.Close()
+		db.Close()
+		return nil, err
+	}
+	if err := rows.Close(); err != nil {
+		db.Close()
+		return nil, err
+	}
+	if !hasStatus {
+		if _, err := db.Exec("ALTER TABLE assets ADD COLUMN status TEXT NOT NULL DEFAULT 'in_use'"); err != nil {
+			db.Close()
+			return nil, err
+		}
+	}
+	// Never reuse a deleted asset ID: a stale browser tab must not accidentally
+	// edit or delete a different card created afterwards.
+	if _, err := db.Exec(`CREATE TABLE IF NOT EXISTS asset_sequence (id INTEGER PRIMARY KEY CHECK (id=1), last_id INTEGER NOT NULL);
+INSERT INTO asset_sequence(id,last_id) SELECT 1,COALESCE(MAX(id),0) FROM assets WHERE true
+ON CONFLICT(id) DO UPDATE SET last_id=MAX(last_id,excluded.last_id);`); err != nil {
 		db.Close()
 		return nil, err
 	}
@@ -59,7 +104,7 @@ CREATE INDEX IF NOT EXISTS inspections_asset ON inspections(asset_id, id);`)
 func (s *Store) Close() error { return s.db.Close() }
 
 func (s *Store) Assets() ([]Asset, error) {
-	rows, err := s.db.Query(`SELECT a.id, a.name, a.notes, COALESCE((SELECT collected_at FROM inspections WHERE asset_id=a.id ORDER BY id DESC LIMIT 1),''), (SELECT COUNT(*) FROM inspections WHERE asset_id=a.id) FROM assets a ORDER BY a.name, a.id`)
+	rows, err := s.db.Query(`SELECT a.id, a.name, a.notes, a.status, COALESCE((SELECT collected_at FROM inspections WHERE asset_id=a.id ORDER BY id DESC LIMIT 1),''), (SELECT COUNT(*) FROM inspections WHERE asset_id=a.id) FROM assets a ORDER BY a.name, a.id`)
 	if err != nil {
 		return nil, err
 	}
@@ -67,7 +112,7 @@ func (s *Store) Assets() ([]Asset, error) {
 	out := []Asset{}
 	for rows.Next() {
 		var a Asset
-		if err := rows.Scan(&a.ID, &a.Name, &a.Notes, &a.LatestAt, &a.Count); err != nil {
+		if err := rows.Scan(&a.ID, &a.Name, &a.Notes, &a.Status, &a.LatestAt, &a.Count); err != nil {
 			return nil, err
 		}
 		out = append(out, a)
@@ -98,10 +143,25 @@ func (s *Store) History(assetID int64) ([]Inspection, error) {
 	return out, rows.Err()
 }
 func (s *Store) SaveNotes(id int64, notes string) error {
+	return s.SaveDetails(id, notes, nil)
+}
+
+func (s *Store) SaveDetails(id int64, notes string, status *string) error {
 	if len(notes) > 100000 {
 		return errors.New("заметка слишком большая")
 	}
-	res, err := s.db.Exec("UPDATE assets SET notes=? WHERE id=?", notes, id)
+	var res sql.Result
+	var err error
+	if status == nil {
+		res, err = s.db.Exec("UPDATE assets SET notes=? WHERE id=?", notes, id)
+	} else {
+		switch *status {
+		case "in_use", "reserve", "retired":
+		default:
+			return errors.New("неверный статус компьютера")
+		}
+		res, err = s.db.Exec("UPDATE assets SET notes=?, status=? WHERE id=?", notes, *status, id)
+	}
 	if err != nil {
 		return err
 	}
@@ -113,6 +173,32 @@ func (s *Store) SaveNotes(id int64, notes string) error {
 		return sql.ErrNoRows
 	}
 	return nil
+}
+
+// Delete removes both the card and its history atomically, including scan IDs.
+func (s *Store) Delete(id int64) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	tx, err := s.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	if _, err := tx.Exec("DELETE FROM inspections WHERE asset_id=?", id); err != nil {
+		return err
+	}
+	res, err := tx.Exec("DELETE FROM assets WHERE id=?", id)
+	if err != nil {
+		return err
+	}
+	n, err := res.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if n == 0 {
+		return sql.ErrNoRows
+	}
+	return tx.Commit()
 }
 
 type querier interface{ QueryRow(string, ...any) *sql.Row }
@@ -184,12 +270,13 @@ func (s *Store) Import(raw []byte, assetID int64) (Preview, int64, error) {
 		if name == "" {
 			name = "Без имени"
 		}
-		res, err := tx.Exec("INSERT INTO assets(name) VALUES(?)", name)
-		if err != nil {
+		if _, err := tx.Exec("UPDATE asset_sequence SET last_id=MAX(last_id, (SELECT COALESCE(MAX(id),0) FROM assets))+1 WHERE id=1"); err != nil {
 			return p, 0, err
 		}
-		assetID, err = res.LastInsertId()
-		if err != nil {
+		if err := tx.QueryRow("SELECT last_id FROM asset_sequence WHERE id=1").Scan(&assetID); err != nil {
+			return p, 0, err
+		}
+		if _, err := tx.Exec("INSERT INTO assets(id,name) VALUES(?,?)", assetID, name); err != nil {
 			return p, 0, err
 		}
 	} else {

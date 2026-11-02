@@ -2,7 +2,10 @@ package base
 
 import (
 	"bytes"
+	"database/sql"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -211,5 +214,119 @@ func TestExistingReports(t *testing.T) {
 		if err != nil || p.Status != "new" {
 			t.Fatalf("%s: %+v %v", name, p, err)
 		}
+	}
+}
+
+func TestMigrateStatusesAndDelete(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "old.sqlite")
+	// Construct the exact old schema and data, then reopen with the new version.
+	db, err := sql.Open("sqlite3", path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = db.Exec(`CREATE TABLE assets (id INTEGER PRIMARY KEY, name TEXT NOT NULL, notes TEXT NOT NULL DEFAULT '');
+CREATE TABLE inspections (id INTEGER PRIMARY KEY, asset_id INTEGER NOT NULL REFERENCES assets(id), scan_id TEXT NOT NULL UNIQUE, collected_at TEXT NOT NULL, imported_at TEXT NOT NULL, report_json TEXT NOT NULL);
+INSERT INTO assets(id,name,notes) VALUES(7,'Old PC','keep this');`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	legacy := fixture("old-scan", time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC))
+	if _, err := db.Exec("INSERT INTO inspections(asset_id,scan_id,collected_at,imported_at,report_json) VALUES(?,?,?,?,?)", 7, legacy.ScanID, legacy.CollectedAt.Format(time.RFC3339), legacy.CollectedAt.Format(time.RFC3339), string(raw(t, legacy))); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Close(); err != nil {
+		t.Fatal(err)
+	}
+	s := openTest(t, path)
+	assets, err := s.Assets()
+	if err != nil || len(assets) != 1 || assets[0].Status != "in_use" || assets[0].Notes != "keep this" {
+		t.Fatalf("migration: %+v %v", assets, err)
+	}
+	history, err := s.History(7)
+	if err != nil || len(history) != 1 || history[0].ScanID != "old-scan" {
+		t.Fatalf("migration history: %+v %v", history, err)
+	}
+	status := "retired"
+	if err := s.SaveDetails(7, "updated", &status); err != nil {
+		t.Fatal(err)
+	}
+	bad := "invalid"
+	if err := s.SaveDetails(7, "lost", &bad); err == nil {
+		t.Fatal("invalid status accepted")
+	}
+	r := fixture("new-migrated", time.Now())
+	_, id, err := s.Import(raw(t, r), 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Delete(id); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.History(id); !errors.Is(err, sql.ErrNoRows) {
+		t.Fatalf("deleted history: %v", err)
+	}
+	if err := s.Delete(id); !errors.Is(err, sql.ErrNoRows) {
+		t.Fatalf("missing asset: %v", err)
+	}
+	// The removed scan can be imported again, since its history was deleted.
+	p, newID, err := s.Import(raw(t, r), 0)
+	if err != nil || p.Status != "new" || newID == id {
+		t.Fatalf("reimport: %+v old ID=%d new ID=%d %v", p, id, newID, err)
+	}
+	if err := s.Close(); err != nil {
+		t.Fatal(err)
+	}
+	s = openTest(t, path)
+	defer s.Close()
+	assets, err = s.Assets()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, a := range assets {
+		if a.ID == 7 {
+			if a.Status != "retired" || a.Notes != "updated" {
+				t.Fatalf("saved details: %+v", a)
+			}
+			return
+		}
+	}
+	t.Fatal("migrated asset disappeared")
+}
+
+func TestDeviceAttributesCompared(t *testing.T) {
+	a := fixture("a", time.Now())
+	b := fixture("b", a.CollectedAt)
+	b.Device.Attributes = map[string]report.Value{"windows_install_date": {Value: "2025-01-02", Status: "collected"}, "total_memory_bytes": {Value: "8589934592", Status: "collected"}}
+	if d := compare(a, b); len(d) != 2 {
+		t.Fatalf("attributes: %+v", d)
+	}
+}
+
+func TestHTTPDeleteAndStatusValidation(t *testing.T) {
+	s := openTest(t, filepath.Join(t.TempDir(), "db.sqlite"))
+	defer s.Close()
+	_, id, err := s.Import(raw(t, fixture("delete-api", time.Now())), 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	h := Handler(s)
+	call := func(method, content string, body string) *httptest.ResponseRecorder {
+		r := httptest.NewRequest(method, fmt.Sprintf("http://localhost:8765/api/assets/%d", id), strings.NewReader(body))
+		r.Header.Set("Content-Type", content)
+		w := httptest.NewRecorder()
+		h.ServeHTTP(w, r)
+		return w
+	}
+	if w := call(http.MethodPut, "application/json", `{"notes":"changed","status":"invalid"}`); w.Code != http.StatusBadRequest {
+		t.Fatalf("invalid status: %d %s", w.Code, w.Body)
+	}
+	if w := call(http.MethodDelete, "text/plain", `{}`); w.Code != http.StatusUnsupportedMediaType {
+		t.Fatalf("unsafe delete: %d", w.Code)
+	}
+	if w := call(http.MethodDelete, "application/json", `{}`); w.Code != http.StatusOK {
+		t.Fatalf("delete: %d %s", w.Code, w.Body)
+	}
+	if w := call(http.MethodDelete, "application/json", `{}`); w.Code != http.StatusNotFound {
+		t.Fatalf("deleted twice: %d", w.Code)
 	}
 }

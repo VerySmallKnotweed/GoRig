@@ -31,9 +31,9 @@ func main() {
 		log.Fatal("Не удалось открыть порт: ", err)
 	}
 	address := "http://" + listener.Addr().String() + "/"
-	fmt.Printf("GoRig Base\nБаза: %s\nОткройте в браузере: %s\nДля остановки нажмите Ctrl+C.\n", *path, address)
+	fmt.Printf("GoRig Base\nБаза: %s\nОткройте в браузере: %s\nДля остановки используйте меню значка в трее или Ctrl+C.\n", *path, address)
 	server := &http.Server{Handler: base.Handler(store), ReadHeaderTimeout: 10 * time.Second}
-	if err := server.Serve(listener); err != nil && err != http.ErrServerClosed {
-		log.Fatal(err)
+	if err := runServer(server, listener, address); err != nil {
+		log.Print("Ошибка работы программы: ", err)
 	}
 }

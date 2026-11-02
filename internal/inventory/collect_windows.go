@@ -21,15 +21,21 @@ type computerSystemWMI struct {
 }
 
 type processorWMI struct {
-	Name         string
-	Manufacturer string
+	Name                      string
+	Manufacturer              string
+	NumberOfCores             uint32
+	NumberOfLogicalProcessors uint32
+	MaxClockSpeed             uint32
 }
 
 type diskDriveWMI struct {
-	Name         string
-	Manufacturer string
-	Model        string
-	SerialNumber string
+	Name          string
+	Manufacturer  string
+	Model         string
+	SerialNumber  string
+	Size          uint64
+	InterfaceType string
+	MediaType     string
 }
 
 type biosWMI struct {
@@ -240,8 +246,8 @@ func selectPrimaryValue(observations []report.Observation) report.Value {
 
 func collectProcessors() []report.Component {
 	var processors []processorWMI
-	err := wmi.Query(
-		"SELECT Name, Manufacturer FROM Win32_Processor",
+	err := queryInventory(
+		"SELECT Name, Manufacturer, NumberOfCores, NumberOfLogicalProcessors, MaxClockSpeed FROM Win32_Processor",
 		&processors,
 	)
 	if err != nil {
@@ -287,6 +293,11 @@ func collectProcessors() []report.Component {
 			Manufacturer: selectPrimaryValue([]report.Observation{makeObservation(processor.Manufacturer, manufacturerSource)}),
 			Model:        report.Value{Status: "not_collected"},
 			SerialNumber: report.Value{Status: "not_collected"},
+			Attributes: map[string]report.Value{
+				"cores":              wmiNumber(uint64(processor.NumberOfCores), "WMI Win32_Processor.NumberOfCores"),
+				"logical_processors": wmiNumber(uint64(processor.NumberOfLogicalProcessors), "WMI Win32_Processor.NumberOfLogicalProcessors"),
+				"max_clock_mhz":      wmiNumber(uint64(processor.MaxClockSpeed), "WMI Win32_Processor.MaxClockSpeed"),
+			},
 		})
 	}
 
@@ -295,8 +306,8 @@ func collectProcessors() []report.Component {
 
 func collectDiskDrives() []report.Component {
 	var drives []diskDriveWMI
-	err := wmi.Query(
-		"SELECT Name, Manufacturer, Model, SerialNumber FROM Win32_DiskDrive",
+	err := queryInventory(
+		"SELECT Name, Manufacturer, Model, SerialNumber, Size, InterfaceType, MediaType FROM Win32_DiskDrive",
 		&drives,
 	)
 
@@ -348,6 +359,11 @@ func collectDiskDrives() []report.Component {
 			SerialNumber: selectPrimaryValue([]report.Observation{
 				makeObservation(drive.SerialNumber, "WMI Win32_DiskDrive.SerialNumber"),
 			}),
+			Attributes: map[string]report.Value{
+				"capacity_bytes": wmiNumber(drive.Size, "WMI Win32_DiskDrive.Size"),
+				"interface_type": wmiString(drive.InterfaceType, "WMI Win32_DiskDrive.InterfaceType"),
+				"media_type":     wmiString(drive.MediaType, "WMI Win32_DiskDrive.MediaType"),
+			},
 		})
 	}
 

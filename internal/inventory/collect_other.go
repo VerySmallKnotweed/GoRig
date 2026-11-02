@@ -28,3 +28,7 @@ func collectDiskDrives() []report.Component       { return nil }
 func collectMemory() []report.Component           { return nil }
 func collectBaseboards() []report.Component       { return nil }
 func collectVideoControllers() []report.Component { return nil }
+
+func collectDeviceAttributes() map[string]report.Value { return nil }
+func collectNetworkAdapters() []report.Component       { return nil }
+func collectFirmware() []report.Component              { return nil }
