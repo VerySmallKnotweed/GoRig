@@ -4,7 +4,6 @@ package main
 
 import (
 	"context"
-	_ "embed"
 	"errors"
 	"log"
 	"net"
@@ -14,11 +13,10 @@ import (
 	"sync"
 	"time"
 
+	"GoRig/internal/icons"
+
 	"github.com/gogpu/systray"
 )
-
-//go:embed assets/tray.png
-var trayIcon []byte
 
 func runServer(server *http.Server, listener net.Listener, address string, stop <-chan struct{}) error {
 	// The Win32 window and its message loop must use the same OS thread.
@@ -29,7 +27,7 @@ func runServer(server *http.Server, listener net.Listener, address string, stop 
 	removeTray := func() { stopTray.Do(tray.Remove) }
 	menu := systray.NewMenu()
 	menu.Add("Выход", removeTray)
-	tray.SetIcon(trayIcon).SetTooltip("GoRig Base").SetMenu(menu)
+	tray.SetIcon(icons.BasePNG).SetTooltip("GoRig Base").SetMenu(menu)
 	tray.OnClick(func() {
 		// Shell handler opens the URL in the user's default browser.
 		cmd := exec.Command("rundll32.exe", "url.dll,FileProtocolHandler", address)

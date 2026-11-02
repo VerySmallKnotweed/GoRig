@@ -14,6 +14,7 @@ import (
 	"testing"
 	"time"
 
+	"GoRig/internal/icons"
 	"GoRig/internal/report"
 )
 
@@ -348,13 +349,19 @@ func TestStaticAssetsAndShutdown(t *testing.T) {
 	defer s.Close()
 	called := 0
 	h := HandlerWithShutdown(s, func() { called++ })
-	for _, path := range []string{"/", "/assets/bootstrap.css", "/assets/bootstrap.js", "/assets/app.css", "/assets/app.js"} {
+	for _, path := range []string{"/", "/assets/bootstrap.css", "/assets/bootstrap.js", "/assets/popper.min.js", "/favicon.ico", "/assets/app.css", "/assets/app.js"} {
 		r := httptest.NewRequest(http.MethodGet, "http://127.0.0.1:8765"+path, nil)
 		w := httptest.NewRecorder()
 		h.ServeHTTP(w, r)
 		if w.Code != http.StatusOK || w.Body.Len() == 0 {
 			t.Fatalf("%s: %d", path, w.Code)
 		}
+	}
+	r := httptest.NewRequest(http.MethodGet, "http://127.0.0.1:8765/favicon.ico", nil)
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, r)
+	if w.Header().Get("Content-Type") != "image/x-icon" || !bytes.Equal(w.Body.Bytes(), icons.BaseICO) {
+		t.Fatal("favicon is not the shared tray icon")
 	}
 	for _, tc := range []struct {
 		origin, content string

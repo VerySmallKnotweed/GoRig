@@ -12,9 +12,11 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+
+	"GoRig/internal/icons"
 )
 
-//go:embed web/index.html web/app.css web/app.js web/vendor/bootstrap.css web/vendor/bootstrap.js web/vendor/LICENSE.bootstrap
+//go:embed web/index.html web/app.css web/app.js web/vendor/bootstrap.css web/vendor/bootstrap.js web/vendor/LICENSE.bootstrap web/vendor/popper.min.js web/vendor/LICENSE.popper
 var files embed.FS
 
 const maxBody = 8 << 20
@@ -57,10 +59,17 @@ func (s *server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		_, _ = w.Write(data)
 		return
 	}
+	if r.Method == http.MethodGet && r.URL.Path == "/favicon.ico" {
+		w.Header().Set("Content-Type", "image/x-icon")
+		w.Header().Set("Cache-Control", "no-cache")
+		_, _ = w.Write(icons.BaseICO)
+		return
+	}
 	if r.Method == http.MethodGet {
 		assets := map[string]struct{ path, contentType string }{
 			"/assets/bootstrap.css": {"web/vendor/bootstrap.css", "text/css; charset=utf-8"},
 			"/assets/bootstrap.js":  {"web/vendor/bootstrap.js", "text/javascript; charset=utf-8"},
+			"/assets/popper.min.js": {"web/vendor/popper.min.js", "text/javascript; charset=utf-8"},
 			"/assets/app.css":       {"web/app.css", "text/css; charset=utf-8"},
 			"/assets/app.js":        {"web/app.js", "text/javascript; charset=utf-8"},
 		}
