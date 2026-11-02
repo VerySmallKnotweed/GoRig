@@ -1,0 +1,5 @@
+# Локальные базы и отчёты могут содержать серийные номера и заметки.
+gorig-base.sqlite*
+gorig-report-*.json
+GoRigBase.exe
+GoRigCollector.exe
