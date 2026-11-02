@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="ru">
+<html lang="ru" data-bs-theme="dark">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -34,10 +34,10 @@
       <div id="global-message" class="alert d-none" role="status"></div>
       <div class="page-heading"><div><div class="eyebrow">ПАНЕЛЬ УПРАВЛЕНИЯ</div><h1>Обзор оборудования</h1><p>Все компьютеры и отчёты в одном месте.</p></div><a href="#import-section" class="btn btn-primary main-action"><span>+</span> Импортировать отчёт</a></div>
       <div class="row g-3 stats-row" aria-label="Статистика компьютеров">
-        <div class="col-6 col-xl-3"><div class="stat-card"><div class="stat-top"><span>Всего компьютеров</span><span class="stat-icon purple">▣</span></div><strong id="stat-all">0</strong><small>В локальной базе</small></div></div>
-        <div class="col-6 col-xl-3"><div class="stat-card"><div class="stat-top"><span>В работе</span><span class="stat-icon green">●</span></div><strong id="stat-in_use">0</strong><small>Используются сейчас</small></div></div>
-        <div class="col-6 col-xl-3"><div class="stat-card"><div class="stat-top"><span>В резерве</span><span class="stat-icon amber">◷</span></div><strong id="stat-reserve">0</strong><small>На хранении</small></div></div>
-        <div class="col-6 col-xl-3"><div class="stat-card"><div class="stat-top"><span>Выбыли</span><span class="stat-icon gray">↗</span></div><strong id="stat-retired">0</strong><small>История сохранена</small></div></div>
+        <div class="col-6 col-xl-3"><div class="stat-card stat-purple"><div class="stat-top"><span>Всего компьютеров</span><span class="stat-icon purple">▣</span></div><strong id="stat-all">0</strong><small>В локальной базе</small><div class="stat-track" aria-hidden="true"><span id="stat-bar-all"></span></div></div></div>
+        <div class="col-6 col-xl-3"><div class="stat-card stat-green"><div class="stat-top"><span>В работе</span><span class="stat-icon green">●</span></div><strong id="stat-in_use">0</strong><small>Используются сейчас</small><div class="stat-track" aria-hidden="true"><span id="stat-bar-in_use"></span></div></div></div>
+        <div class="col-6 col-xl-3"><div class="stat-card stat-amber"><div class="stat-top"><span>В резерве</span><span class="stat-icon amber">◷</span></div><strong id="stat-reserve">0</strong><small>На хранении</small><div class="stat-track" aria-hidden="true"><span id="stat-bar-reserve"></span></div></div></div>
+        <div class="col-6 col-xl-3"><div class="stat-card stat-gray"><div class="stat-top"><span>Выбыли</span><span class="stat-icon gray">↗</span></div><strong id="stat-retired">0</strong><small>История сохранена</small><div class="stat-track" aria-hidden="true"><span id="stat-bar-retired"></span></div></div></div>
       </div>
       <div class="row g-4 dashboard-row">
         <div class="col-12 col-xxl-8">
@@ -66,7 +66,7 @@
           <div class="help-note"><div class="help-icon">i</div><div><strong>Ваши данные остаются у вас</strong><p>Отчёты и заметки хранятся локально. Регулярно создавайте резервную копию базы.</p></div></div>
         </div>
       </div>
-      <footer><span>GoRig Base <b>·</b> Локальная инвентаризация</span><span>Сделано для вашего хозяйства</span></footer>
+      <footer class="app-footer"><span>Created by a <strong>StrangeFragment</strong> in 2©26</span></footer>
     </main>
   </div>
 </div>

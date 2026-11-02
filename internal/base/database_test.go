@@ -357,6 +357,17 @@ func TestStaticAssetsAndShutdown(t *testing.T) {
 			t.Fatalf("%s: %d", path, w.Code)
 		}
 	}
+	for _, subset := range []string{"latin", "cyrillic"} {
+		for _, weight := range []string{"400", "500", "700"} {
+			path := "/assets/fonts/roboto-" + subset + "-" + weight + "-normal.woff2"
+			r := httptest.NewRequest(http.MethodGet, "http://127.0.0.1:8765"+path, nil)
+			w := httptest.NewRecorder()
+			h.ServeHTTP(w, r)
+			if w.Code != http.StatusOK || w.Header().Get("Content-Type") != "font/woff2" || !bytes.HasPrefix(w.Body.Bytes(), []byte("wOF2")) {
+				t.Fatalf("font %s: %d, type %s", path, w.Code, w.Header().Get("Content-Type"))
+			}
+		}
+	}
 	r := httptest.NewRequest(http.MethodGet, "http://127.0.0.1:8765/favicon.ico", nil)
 	w := httptest.NewRecorder()
 	h.ServeHTTP(w, r)

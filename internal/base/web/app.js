@@ -55,7 +55,8 @@ function notify(text,kind='danger'){const el=$('global-message');el.textContent=
 function renderAssets(){
   const filter=$('filter').value, shown=assets.filter(a=>filter==='all'||a.status===filter);
   $('asset-count').textContent=shown.length+' / '+assets.length;$('stat-all').textContent=assets.length;
-  for(const key of ['in_use','reserve','retired'])$('stat-'+key).textContent=assets.filter(a=>a.status===key).length;
+  $('stat-bar-all').style.width=assets.length?'100%':'0%';
+  for(const key of ['in_use','reserve','retired']){const count=assets.filter(a=>a.status===key).length;$('stat-'+key).textContent=count;$('stat-bar-'+key).style.width=(assets.length?count/assets.length*100:0)+'%';}
   clear($('asset-list'));if(!shown.length)$('asset-list').append(node('p','В этой категории пока нет компьютеров.','subtle py-3'));
   for(const a of shown){const b=node('button',undefined,'asset'+(selectedAsset===a.id?' active':''));b.type='button';const copy=node('span',undefined,'asset-copy');copy.append(node('span',a.name,'asset-name'),node('span',(assetStatuses[a.status]||a.status)+' · обследований: '+a.count,'asset-meta'));b.append(node('span','▣','asset-avatar'),copy,node('span','›','asset-arrow'));b.onclick=()=>openAsset(a.id);$('asset-list').append(b);}
 }

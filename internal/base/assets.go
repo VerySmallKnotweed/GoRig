@@ -16,7 +16,7 @@ import (
 	"GoRig/internal/icons"
 )
 
-//go:embed web/index.html web/app.css web/app.js web/vendor/bootstrap.css web/vendor/bootstrap.js web/vendor/LICENSE.bootstrap web/vendor/popper.min.js web/vendor/LICENSE.popper
+//go:embed web/index.html web/app.css web/app.js web/vendor/bootstrap.css web/vendor/bootstrap.js web/vendor/LICENSE.bootstrap web/vendor/popper.min.js web/vendor/LICENSE.popper web/vendor/LICENSE.roboto web/vendor/fonts/*.woff2
 var files embed.FS
 
 const maxBody = 8 << 20
@@ -67,11 +67,17 @@ func (s *server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	if r.Method == http.MethodGet {
 		assets := map[string]struct{ path, contentType string }{
-			"/assets/bootstrap.css": {"web/vendor/bootstrap.css", "text/css; charset=utf-8"},
-			"/assets/bootstrap.js":  {"web/vendor/bootstrap.js", "text/javascript; charset=utf-8"},
-			"/assets/popper.min.js": {"web/vendor/popper.min.js", "text/javascript; charset=utf-8"},
-			"/assets/app.css":       {"web/app.css", "text/css; charset=utf-8"},
-			"/assets/app.js":        {"web/app.js", "text/javascript; charset=utf-8"},
+			"/assets/bootstrap.css":                          {"web/vendor/bootstrap.css", "text/css; charset=utf-8"},
+			"/assets/bootstrap.js":                           {"web/vendor/bootstrap.js", "text/javascript; charset=utf-8"},
+			"/assets/popper.min.js":                          {"web/vendor/popper.min.js", "text/javascript; charset=utf-8"},
+			"/assets/app.css":                                {"web/app.css", "text/css; charset=utf-8"},
+			"/assets/app.js":                                 {"web/app.js", "text/javascript; charset=utf-8"},
+			"/assets/fonts/roboto-latin-400-normal.woff2":    {"web/vendor/fonts/roboto-latin-400-normal.woff2", "font/woff2"},
+			"/assets/fonts/roboto-cyrillic-400-normal.woff2": {"web/vendor/fonts/roboto-cyrillic-400-normal.woff2", "font/woff2"},
+			"/assets/fonts/roboto-latin-500-normal.woff2":    {"web/vendor/fonts/roboto-latin-500-normal.woff2", "font/woff2"},
+			"/assets/fonts/roboto-cyrillic-500-normal.woff2": {"web/vendor/fonts/roboto-cyrillic-500-normal.woff2", "font/woff2"},
+			"/assets/fonts/roboto-latin-700-normal.woff2":    {"web/vendor/fonts/roboto-latin-700-normal.woff2", "font/woff2"},
+			"/assets/fonts/roboto-cyrillic-700-normal.woff2": {"web/vendor/fonts/roboto-cyrillic-700-normal.woff2", "font/woff2"},
 		}
 		if asset, ok := assets[r.URL.Path]; ok {
 			data, err := files.ReadFile(asset.path)
