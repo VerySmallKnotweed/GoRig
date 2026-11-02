@@ -32,3 +32,9 @@ func collectVideoControllers() []report.Component { return nil }
 func collectDeviceAttributes() map[string]report.Value { return nil }
 func collectNetworkAdapters() []report.Component       { return nil }
 func collectFirmware() []report.Component              { return nil }
+
+func collectInstalledMemory(_ []report.Component) report.Value {
+	return report.Value{Status: "not_collected"}
+}
+func collectLogicalVolumes() []report.Component { return nil }
+func collectPeripherals() []report.Component    { return nil }

@@ -330,3 +330,48 @@ func TestHTTPDeleteAndStatusValidation(t *testing.T) {
 		t.Fatalf("deleted twice: %d", w.Code)
 	}
 }
+
+func TestFreeSpaceIsNotConfiguration(t *testing.T) {
+	a := fixture("a", time.Now())
+	b := fixture("b", a.CollectedAt)
+	x := report.Component{Type: "volume", Name: report.Value{Value: "C:", Status: "collected"}, Attributes: map[string]report.Value{"free_bytes": {Value: "100", Status: "collected"}, "capacity_bytes": {Value: "200", Status: "collected"}}}
+	y := report.Component{Type: "volume", Name: x.Name, Attributes: map[string]report.Value{"free_bytes": {Value: "40", Status: "collected"}, "capacity_bytes": {Value: "200", Status: "collected"}}}
+	a.Device.Components = append(a.Device.Components, x)
+	b.Device.Components = append(b.Device.Components, y)
+	if d := compare(a, b); len(d) != 0 {
+		t.Fatalf("free space differs: %+v", d)
+	}
+}
+
+func TestStaticAssetsAndShutdown(t *testing.T) {
+	s := openTest(t, filepath.Join(t.TempDir(), "db.sqlite"))
+	defer s.Close()
+	called := 0
+	h := HandlerWithShutdown(s, func() { called++ })
+	for _, path := range []string{"/", "/assets/bootstrap.css", "/assets/bootstrap.js", "/assets/app.css", "/assets/app.js"} {
+		r := httptest.NewRequest(http.MethodGet, "http://127.0.0.1:8765"+path, nil)
+		w := httptest.NewRecorder()
+		h.ServeHTTP(w, r)
+		if w.Code != http.StatusOK || w.Body.Len() == 0 {
+			t.Fatalf("%s: %d", path, w.Code)
+		}
+	}
+	for _, tc := range []struct {
+		origin, content string
+		want            int
+		calls           int
+	}{
+		{"http://evil.example", "application/json", http.StatusForbidden, 0},
+		{"http://localhost:8765", "text/plain", http.StatusUnsupportedMediaType, 0},
+		{"http://localhost:8765", "application/json", http.StatusOK, 1},
+	} {
+		r := httptest.NewRequest(http.MethodPost, "http://localhost:8765/api/shutdown", strings.NewReader("{}"))
+		r.Header.Set("Origin", tc.origin)
+		r.Header.Set("Content-Type", tc.content)
+		w := httptest.NewRecorder()
+		h.ServeHTTP(w, r)
+		if w.Code != tc.want || called != tc.calls {
+			t.Fatalf("shutdown: %d calls %d, want %d/%d", w.Code, called, tc.want, tc.calls)
+		}
+	}
+}

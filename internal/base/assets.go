@@ -14,15 +14,23 @@ import (
 	"strings"
 )
 
-//go:embed web/index.html
+//go:embed web/index.html web/app.css web/app.js web/vendor/bootstrap.css web/vendor/bootstrap.js web/vendor/LICENSE.bootstrap
 var files embed.FS
 
 const maxBody = 8 << 20
 
-type server struct{ store *Store }
+type server struct {
+	store    *Store
+	shutdown func()
+}
 
 // Handler exposes the local application; it is not intended for public use.
 func Handler(store *Store) http.Handler { return &server{store: store} }
+
+// HandlerWithShutdown requests shutdown asynchronously after the response.
+func HandlerWithShutdown(store *Store, shutdown func()) http.Handler {
+	return &server{store: store, shutdown: shutdown}
+}
 
 func (s *server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// Prevent hostile websites from using the local service via DNS rebinding or CSRF.
@@ -42,11 +50,43 @@ func (s *server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	w.Header().Set("X-Content-Type-Options", "nosniff")
-	w.Header().Set("Content-Security-Policy", "default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; object-src 'none'; frame-ancestors 'none'")
+	w.Header().Set("Content-Security-Policy", "default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; object-src 'none'; frame-ancestors 'none'")
 	if r.URL.Path == "/" && r.Method == http.MethodGet {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		data, _ := files.ReadFile("web/index.html")
 		_, _ = w.Write(data)
+		return
+	}
+	if r.Method == http.MethodGet {
+		assets := map[string]struct{ path, contentType string }{
+			"/assets/bootstrap.css": {"web/vendor/bootstrap.css", "text/css; charset=utf-8"},
+			"/assets/bootstrap.js":  {"web/vendor/bootstrap.js", "text/javascript; charset=utf-8"},
+			"/assets/app.css":       {"web/app.css", "text/css; charset=utf-8"},
+			"/assets/app.js":        {"web/app.js", "text/javascript; charset=utf-8"},
+		}
+		if asset, ok := assets[r.URL.Path]; ok {
+			data, err := files.ReadFile(asset.path)
+			if err != nil {
+				http.NotFound(w, r)
+				return
+			}
+			w.Header().Set("Content-Type", asset.contentType)
+			w.Header().Set("Cache-Control", "no-cache")
+			_, _ = w.Write(data)
+			return
+		}
+	}
+	if r.URL.Path == "/api/shutdown" && r.Method == http.MethodPost {
+		if s.shutdown == nil {
+			http.Error(w, "выключение недоступно", http.StatusServiceUnavailable)
+			return
+		}
+		var req struct{}
+		if !readJSON(w, r, &req) {
+			return
+		}
+		respond(w, map[string]bool{"ok": true}, nil)
+		defer s.shutdown()
 		return
 	}
 	if r.URL.Path == "/api/assets" && r.Method == http.MethodGet {

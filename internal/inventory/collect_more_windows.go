@@ -14,8 +14,12 @@ type osDetailsWMI struct {
 	Version        string
 	OSArchitecture string
 	InstallDate    string
+	SerialNumber   string
 }
-type computerMemoryWMI struct{ TotalPhysicalMemory uint64 }
+type computerMemoryWMI struct {
+	TotalPhysicalMemory uint64
+	SystemType          string
+}
 type networkAdapterWMI struct {
 	Name            string
 	Manufacturer    string
@@ -52,16 +56,18 @@ func wmiDate(raw, source string) report.Value {
 func collectDeviceAttributes() map[string]report.Value {
 	result := make(map[string]report.Value)
 	var systems []computerMemoryWMI
-	err := queryInventory("SELECT TotalPhysicalMemory FROM Win32_ComputerSystem", &systems)
+	err := queryInventory("SELECT TotalPhysicalMemory, SystemType FROM Win32_ComputerSystem", &systems)
 	if err != nil || len(systems) == 0 {
 		result["total_memory_bytes"] = missingQuery("WMI Win32_ComputerSystem.TotalPhysicalMemory", err)
+		result["system_type"] = missingQuery("WMI Win32_ComputerSystem.SystemType", err)
 	} else {
 		result["total_memory_bytes"] = wmiNumber(systems[0].TotalPhysicalMemory, "WMI Win32_ComputerSystem.TotalPhysicalMemory")
+		result["system_type"] = wmiString(systems[0].SystemType, "WMI Win32_ComputerSystem.SystemType")
 	}
 	var osInfo []osDetailsWMI
-	err = queryInventory("SELECT Caption, Version, OSArchitecture, InstallDate FROM Win32_OperatingSystem", &osInfo)
+	err = queryInventory("SELECT Caption, Version, OSArchitecture, InstallDate, SerialNumber FROM Win32_OperatingSystem", &osInfo)
 	if err != nil || len(osInfo) == 0 {
-		for _, key := range []string{"windows_name", "windows_version", "windows_architecture", "windows_install_date"} {
+		for _, key := range []string{"windows_name", "windows_version", "windows_architecture", "windows_install_date", "windows_product_id"} {
 			result[key] = missingQuery("WMI Win32_OperatingSystem", err)
 		}
 	} else {
@@ -70,7 +76,23 @@ func collectDeviceAttributes() map[string]report.Value {
 		result["windows_version"] = wmiString(os.Version, "WMI Win32_OperatingSystem.Version")
 		result["windows_architecture"] = wmiString(os.OSArchitecture, "WMI Win32_OperatingSystem.OSArchitecture")
 		result["windows_install_date"] = wmiDate(os.InstallDate, "WMI Win32_OperatingSystem.InstallDate")
+		result["windows_product_id"] = wmiString(os.SerialNumber, "WMI Win32_OperatingSystem.SerialNumber")
 	}
+	result["windows_install_date"] = selectPrimaryValue(append([]report.Observation{readInstallDate()}, result["windows_install_date"].Observations...))
+	result["windows_product_id"] = selectPrimaryValue(append([]report.Observation{readRegistryString(`SOFTWARE\Microsoft\Windows NT\CurrentVersion`, "ProductId")}, result["windows_product_id"].Observations...))
+	deviceID := readRegistryString(`SOFTWARE\Microsoft\SQMClient`, "MachineId")
+	if deviceID.Status == "collected" {
+		deviceID.Value = strings.Trim(strings.TrimSpace(deviceID.Value), "{}")
+	}
+	result["windows_device_id"] = selectPrimaryValue([]report.Observation{deviceID})
+	var products []systemProductWMI
+	err = queryInventory("SELECT UUID FROM Win32_ComputerSystemProduct", &products)
+	if err != nil || len(products) == 0 {
+		result["hardware_uuid"] = missingQuery("WMI Win32_ComputerSystemProduct.UUID", err)
+	} else {
+		result["hardware_uuid"] = wmiString(products[0].UUID, "WMI Win32_ComputerSystemProduct.UUID")
+	}
+	result["touch_support"] = collectTouch()
 	return result
 }
 

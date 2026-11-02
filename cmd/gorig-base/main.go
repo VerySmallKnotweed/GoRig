@@ -32,8 +32,15 @@ func main() {
 	}
 	address := "http://" + listener.Addr().String() + "/"
 	fmt.Printf("GoRig Base\nБаза: %s\nОткройте в браузере: %s\nДля остановки используйте меню значка в трее или Ctrl+C.\n", *path, address)
-	server := &http.Server{Handler: base.Handler(store), ReadHeaderTimeout: 10 * time.Second}
-	if err := runServer(server, listener, address); err != nil {
+	stop := make(chan struct{}, 1)
+	requestShutdown := func() {
+		select {
+		case stop <- struct{}{}:
+		default:
+		}
+	}
+	server := &http.Server{Handler: base.HandlerWithShutdown(store, requestShutdown), ReadHeaderTimeout: 10 * time.Second}
+	if err := runServer(server, listener, address, stop); err != nil {
 		log.Print("Ошибка работы программы: ", err)
 	}
 }

@@ -39,11 +39,17 @@ func Collect(collectorVersion string) (report.Report, error) {
 		collectDiskDrives()...,
 	)
 
-	result.Device.Components = append(result.Device.Components, collectMemory()...)
+	memory := collectMemory()
+	result.Device.Components = append(result.Device.Components, memory...)
+	if result.Device.Attributes != nil {
+		result.Device.Attributes["installed_memory_bytes"] = collectInstalledMemory(memory)
+	}
 	result.Device.Components = append(result.Device.Components, collectBaseboards()...)
 	result.Device.Components = append(result.Device.Components, collectVideoControllers()...)
 	result.Device.Components = append(result.Device.Components, collectNetworkAdapters()...)
 	result.Device.Components = append(result.Device.Components, collectFirmware()...)
+	result.Device.Components = append(result.Device.Components, collectLogicalVolumes()...)
+	result.Device.Components = append(result.Device.Components, collectPeripherals()...)
 
 	return result, nil
 }

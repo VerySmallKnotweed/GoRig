@@ -1,0 +1,96 @@
+'use strict';
+const $ = id => document.getElementById(id);
+let assets = [], selectedAsset = null, files = [], selectedFile = null, currentReport = null;
+let previewSerial = 0, assetSerial = 0, serverStopped = false;
+const labels = {processor:'Процессор',disk:'Физический накопитель',memory:'Модуль памяти',motherboard:'Материнская плата',video:'Видеоконтроллер',network:'Сетевой адаптер',bios:'BIOS',volume:'Логический том',monitor:'Монитор',keyboard:'Клавиатура',mouse:'Указательное устройство',printer:'Принтер'};
+const attrs = {capacity_bytes:'Объём',free_bytes:'Свободно на момент сбора',speed_mhz:'Скорость, МГц',driver_version:'Версия драйвера',pnp_device_id:'PNP ID',total_memory_bytes:'Память, доступная Windows',installed_memory_bytes:'Установленная память',windows_name:'Редакция Windows',windows_version:'Версия Windows',windows_architecture:'Архитектура Windows',windows_install_date:'Дата установки Windows',windows_device_id:'Код устройства Windows (SQM)',windows_product_id:'Код продукта Windows',hardware_uuid:'Аппаратный UUID',system_type:'Тип системы',touch_support:'Перо и сенсорный ввод',cores:'Физические ядра',logical_processors:'Логические процессоры',max_clock_mhz:'Макс. частота, МГц',interface_type:'Интерфейс',media_type:'Тип носителя (WMI)',mac_address:'MAC-адрес',release_date:'Дата выпуска',video_memory_bytes:'Видеопамять по WMI',filesystem:'Файловая система',volume_type:'Тип тома',printer_driver:'Драйвер',printer_port:'Порт',screen_width:'Ширина, пикселей',screen_height:'Высота, пикселей'};
+const assetStatuses = {in_use:'В работе',reserve:'В резерве',retired:'Выбыл'};
+const byteKeys = new Set(['capacity_bytes','free_bytes','total_memory_bytes','installed_memory_bytes','video_memory_bytes']);
+function node(tag, text, cls){ const n=document.createElement(tag); if(text!==undefined)n.textContent=text; if(cls)n.className=cls; return n; }
+function clear(el){ el.replaceChildren(); }
+function itemValue(x){ return !!(x && ['collected','template'].includes(x.status) && String(x.value ?? '').trim()); }
+function v(x){ if(x && x.status==='not_collected')return 'Не собиралось'; if(x && x.status==='error')return 'Ошибка сбора'; if(!itemValue(x))return 'Нет данных'; return String(x.value).trim()+(x.status==='template'?' (шаблон)':''); }
+function bytes(n){ const value=Number(n); if(!Number.isSafeInteger(value)||value<0)return String(n)+' байт'; if(value>=1073741824)return (value/1073741824).toLocaleString('ru-RU',{maximumFractionDigits:2})+' ГиБ'; if(value>=1048576)return (value/1048576).toLocaleString('ru-RU',{maximumFractionDigits:2})+' МиБ'; return value.toLocaleString('ru-RU')+' байт'; }
+function formatted(x,key){ return byteKeys.has(key)&&itemValue(x)&&/^\d+$/.test(String(x.value))?bytes(x.value):v(x); }
+function when(s){ const d=new Date(s); return Number.isNaN(d.valueOf())?String(s||'—'):d.toLocaleString('ru-RU'); }
+function kv(container,pairs){const d=node('div',undefined,'kv');for(const [k,val] of pairs)d.append(node('span',k),node('span',val));container.append(d);}
+function spec(container,label,text){const row=node('div',undefined,'spec-row');row.append(node('span',label,'spec-label'),node('span',text,'spec-value'));container.append(row);}
+function valid(c){return [c.name,c.manufacturer,c.model,c.serial_number,...Object.values(c.attributes||{})].some(itemValue);}
+function byType(r,type){return (r.device?.components||[]).filter(c=>c.type===type && valid(c));}
+function shortComponent(c){return itemValue(c.model)?v(c.model):v(c.name);}
+function installedMemory(r){
+  const recorded=r.device?.attributes?.installed_memory_bytes;
+  if(itemValue(recorded))return formatted(recorded,'installed_memory_bytes');
+  const modules=(r.device?.components||[]).filter(c=>c.type==='memory');
+  if(!modules.length||modules.some(c=>!itemValue(c.attributes?.capacity_bytes)||!/^\d+$/.test(String(c.attributes.capacity_bytes.value))))return 'Нет данных';
+  let total=0;for(const m of modules){const n=Number(m.attributes.capacity_bytes.value);if(!Number.isSafeInteger(n)||n<=0||!Number.isSafeInteger(total+n))return 'Нет данных';total+=n;}
+  return bytes(total)+' (сумма обнаруженных модулей)';
+}
+function warnings(r){const problems=[];for(const c of r.device?.components||[])if(!valid(c))problems.push((labels[c.type]||c.type||'Компонент')+': нет данных или ошибка запроса');if(!itemValue(r.device?.attributes?.windows_install_date))problems.push('дата установки Windows недоступна или не собиралась');if(installedMemory(r)==='Нет данных')problems.push('установленный объём памяти не определён');return [...new Set(problems)];}
+function showReport(r,origin,canImport){
+  currentReport=r; $('empty-report').hidden=true; $('report-content').hidden=false; $('report-origin').hidden=false; $('report-origin').textContent=origin;
+  const d=r.device||{}, at=d.attributes||{}, processors=byType(r,'processor'),disks=byType(r,'disk'),video=byType(r,'video');
+  $('device-name').textContent=v(d.computer_name); $('device-subtitle').textContent=[itemValue(d.manufacturer)?v(d.manufacturer):'',itemValue(d.model)?v(d.model):''].filter(Boolean).join(' · ')||'Сведения из обследования';
+  const a=assets.find(x=>x.id===selectedAsset); $('device-state').textContent=origin==='Из базы'&&a?(assetStatuses[a.status]||a.status):'ОТЧЁТ';
+  $('report-meta').textContent='Обследование: '+when(r.collected_at)+'  ·  Коллектор: '+(r.collector_version||'—')+'  ·  ID: '+(r.scan_id||'—');
+  const overview=$('overview-details');clear(overview);
+  spec(overview,'Процессор',processors.length?processors.map(c=>v(c.name)).join('\n'):'Нет данных');
+  spec(overview,'Оперативная память',installedMemory(r));
+  spec(overview,'Накопители',disks.length?disks.map(c=>shortComponent(c)+'  ·  '+formatted(c.attributes?.capacity_bytes,'capacity_bytes')).join('\n'):'Нет данных');
+  spec(overview,'Видеоадаптер',video.length?video.map(c=>v(c.name)+(itemValue(c.attributes?.video_memory_bytes)?' · '+formatted(c.attributes.video_memory_bytes,'video_memory_bytes')+' (WMI)':'')).join('\n'):'Нет данных');
+  spec(overview,'Код устройства',v(at.windows_device_id)); spec(overview,'Код продукта',v(at.windows_product_id));
+  spec(overview,'Тип системы',[itemValue(at.windows_architecture)?v(at.windows_architecture):'',itemValue(at.system_type)?v(at.system_type):''].filter(Boolean).join(' · ')||'Нет данных');
+  spec(overview,'Дата установки Windows',v(at.windows_install_date)); spec(overview,'Перо и сенсорный ввод',v(at.touch_support));
+  const problems=warnings(r);$('quality').hidden=!problems.length;$('quality').textContent='Неполный сбор: '+problems.join('; ')+'. Подробности — в исходных данных.';
+  clear($('device'));$('device').append(node('h3','Компьютер и Windows','detail-section-title'));
+  const entries=[['Имя',v(d.computer_name)],['Производитель',v(d.manufacturer)],['Модель',v(d.model)],['Серийный номер',v(d.serial_number)],['ОС',v(d.os)+(d.os?.raw&&itemValue(d.os)?' — '+d.os.raw:'')],...Object.entries(at).map(([k,x])=>[attrs[k]||k,formatted(x,k)])];kv($('device'),entries);
+  clear($('components'));$('components').append(node('h3','Комплектующие и устройства','detail-section-title'));
+  const grid=node('div',undefined,'detail-grid');for(const c of d.components||[]){const box=node('div',undefined,'detail-card');box.append(node('strong',labels[c.type]||c.type||'Неизвестный компонент'));if(!valid(c)){box.append(node('span','Данные недоступны или запрос завершился ошибкой.','subtle'));}else{const pairs=[['Название / слот',v(c.name)],['Производитель',v(c.manufacturer)],['Модель',v(c.model)],['Серийный номер',v(c.serial_number)]];for(const [k,x] of Object.entries(c.attributes||{}))pairs.push([attrs[k]||k,formatted(x,k)]);kv(box,pairs);}grid.append(box);}
+  if(!grid.childNodes.length)grid.append(node('p','Компоненты в отчёте отсутствуют.','subtle'));$('components').append(grid);
+  $('raw').textContent=JSON.stringify(r,null,2);$('import-panel').hidden=!canImport;
+}
+async function api(path,opts){const r=await fetch(path,opts);if(!r.ok)throw new Error((await r.text()).trim()||('HTTP '+r.status));return r.json();}
+function jsonPost(obj,method='POST'){return {method,headers:{'Content-Type':'application/json'},body:JSON.stringify(obj)};}
+function notify(text,kind='danger'){const el=$('global-message');el.textContent=text;el.className='alert alert-'+kind;}
+function renderAssets(){
+  const filter=$('filter').value, shown=assets.filter(a=>filter==='all'||a.status===filter);
+  $('asset-count').textContent=shown.length+' / '+assets.length;$('stat-all').textContent=assets.length;
+  for(const key of ['in_use','reserve','retired'])$('stat-'+key).textContent=assets.filter(a=>a.status===key).length;
+  clear($('asset-list'));if(!shown.length)$('asset-list').append(node('p','В этой категории пока нет компьютеров.','subtle py-3'));
+  for(const a of shown){const b=node('button',undefined,'asset'+(selectedAsset===a.id?' active':''));b.type='button';const copy=node('span',undefined,'asset-copy');copy.append(node('span',a.name,'asset-name'),node('span',(assetStatuses[a.status]||a.status)+' · обследований: '+a.count,'asset-meta'));b.append(node('span','▣','asset-avatar'),copy,node('span','›','asset-arrow'));b.onclick=()=>openAsset(a.id);$('asset-list').append(b);}
+}
+async function loadAssets(){
+  assets=await api('/api/assets');renderAssets();const target=$('target'),old=target.value;clear(target);target.append(new Option('— Выберите действие —',''),new Option('Новый компьютер','0'));
+  for(const a of assets)target.append(new Option(a.name+' (ID '+a.id+', '+(assetStatuses[a.status]||a.status)+')',String(a.id)));target.value=old;
+}
+$('filter').onchange=renderAssets;
+function dirty(){const a=assets.find(x=>x.id===selectedAsset);return a&&!$('asset-detail').hidden&&(a.notes!==$('notes').value||a.status!==$('asset-status').value);}
+async function openAsset(id){
+  if(dirty()&&!confirm('Есть несохранённые изменения заметки или статуса. Перейти без сохранения?'))return;
+  const token=++assetSerial;try{selectedAsset=id;const a=assets.find(x=>x.id===id);if(!a)return;$('asset-detail').hidden=false;$('asset-title').textContent=a.name+' · ID '+id;$('notes').value=a.notes;$('asset-status').value=a.status;$('notes-status').textContent='';renderAssets();
+    const hist=await api('/api/assets/'+id);if(token!==assetSerial)return;clear($('history'));if(!hist.length)$('history').append(node('p','История пуста.','subtle'));
+    for(const h of hist){const b=node('button',when(h.collected_at),'history-btn');b.type='button';b.title='Импортирован: '+when(h.imported_at);b.onclick=()=>{selectedFile=null;renderFiles();showReport(h.report,'Из базы',false);};$('history').append(b);}
+    if(selectedFile){$('target').value=String(id);await runPreview();}else if(hist.length)showReport(hist[0].report,'Из базы',false);else{$('empty-report').hidden=false;$('report-content').hidden=true;$('report-origin').hidden=true;currentReport=null;}
+  }catch(e){notify('Не удалось открыть компьютер: '+e.message);}
+}
+$('save-notes').onclick=async()=>{const id=selectedAsset;if(id===null)return;try{await api('/api/assets/'+id,jsonPost({notes:$('notes').value,status:$('asset-status').value},'PUT'));await loadAssets();if(selectedAsset===id)$('notes-status').textContent='Сохранено';}catch(e){$('notes-status').textContent='Ошибка: '+e.message;}};
+$('delete-asset').onclick=async()=>{const a=assets.find(x=>x.id===selectedAsset);if(!a||!confirm('Удалить компьютер «'+a.name+'» (ID '+a.id+') и всю историю обследований? Это нельзя отменить. Для списания без удаления выберите статус «Выбыл».'))return;try{await api('/api/assets/'+a.id,jsonPost({},'DELETE'));selectedAsset=null;assetSerial++;previewSerial++;$('asset-detail').hidden=true;if(!selectedFile){$('empty-report').hidden=false;$('report-content').hidden=true;$('report-origin').hidden=true;currentReport=null;}else{$('target').value='';$('preview').hidden=true;$('import').disabled=true;clear($('diff'));}await loadAssets();}catch(e){$('notes-status').textContent='Ошибка удаления: '+e.message;}};
+function chooseFiles(list){files=[...list].filter(f=>f.name.toLowerCase().endsWith('.json')).sort((a,b)=>(a.webkitRelativePath||a.name).localeCompare(b.webkitRelativePath||b.name));selectedFile=null;currentReport=null;previewSerial++;$('empty-report').hidden=false;$('report-content').hidden=true;$('report-origin').hidden=true;$('import-panel').hidden=true;$('file-error').textContent=files.length?'':'JSON-файлы не найдены.';renderFiles();}
+$('file-input').onchange=e=>{chooseFiles(e.target.files);e.target.value='';};$('folder-input').onchange=e=>{chooseFiles(e.target.files);e.target.value='';};
+function renderFiles(){clear($('files'));for(const f of files){const b=node('button',f.webkitRelativePath||f.name,'asset file'+(f===selectedFile?' active':''));b.type='button';b.onclick=()=>openFile(f);$('files').append(b);}}
+async function openFile(f){
+  selectedFile=f;currentReport=null;previewSerial++;renderFiles();$('file-error').textContent='';$('empty-report').hidden=false;$('report-content').hidden=true;$('report-origin').hidden=true;$('import-panel').hidden=true;
+  try{if(f.size>7*1024*1024)throw new Error('Файл больше 7 МБ');const r=JSON.parse(await f.text());if(f!==selectedFile)return;if(!r||r.schema_version!==1||!r.scan_id||!r.collected_at||!r.device||!Array.isArray(r.device.components))throw new Error('Это не поддерживаемый отчёт GoRig версии 1');showReport(r,f.name,true);$('target').value='';$('preview').hidden=true;clear($('diff'));$('import').disabled=true;}
+  catch(e){if(f!==selectedFile)return;selectedFile=null;currentReport=null;renderFiles();$('file-error').textContent='Не удалось открыть файл: '+e.message;}
+}
+const statusText={new:'Новый компьютер. Проверьте отчёт и нажмите «Добавить в базу».',changed:'Найдены отличия от последнего сохранённого обследования.',unchanged:'Отличий среди сравниваемых данных нет. Новое обследование не будет добавлено.',duplicate:'Этот отчёт уже есть в базе (компьютер ID ',older:'Отчёт старше последнего сохранённого обследования. Для защиты текущего состояния он не будет добавлен.'};
+async function runPreview(){
+  const token=++previewSerial;$('import').disabled=true;clear($('diff'));if(!currentReport||$('target').value===''){$('preview').hidden=true;return;}$('preview').hidden=false;$('preview').className='alert alert-info mt-3';$('preview').textContent='Сравнение…';
+  try{const p=await api('/api/preview',jsonPost({asset_id:Number($('target').value),report:currentReport}));if(token!==previewSerial)return;$('preview').className='alert mt-3 '+(['new','changed'].includes(p.status)?'alert-success':'alert-warning');$('preview').textContent=statusText[p.status]+(p.status==='duplicate'?p.duplicate_asset_id+').':'')+(p.latest_at?'\nПоследнее сохранённое обследование: '+when(p.latest_at):'');$('import').disabled=!['new','changed'].includes(p.status);
+    if(p.differences?.length){const t=node('table',undefined,'table table-sm align-middle');const head=node('tr');for(const s of ['Поле','В базе','В отчёте'])head.append(node('th',s));t.append(head);for(const d of p.differences){const tr=node('tr');for(const s of [d.field,d.before||'Нет данных',d.after||'Нет данных'])tr.append(node('td',s));t.append(tr);}$('diff').append(t);}
+  }catch(e){if(token!==previewSerial)return;$('preview').className='alert alert-danger mt-3';$('preview').textContent='Ошибка: '+e.message;}
+}
+$('target').onchange=runPreview;
+$('import').onclick=async()=>{const target=$('target').value, report=currentReport, file=selectedFile;if(!report||target==='')return;if(dirty()){notify('Сначала сохраните изменения статуса или заметки.','warning');return;}$('import').disabled=true;try{const res=await api('/api/import',jsonPost({asset_id:Number(target),report}));if(!['new','changed'].includes(res.preview.status)){await runPreview();return;}await loadAssets();if(currentReport!==report||selectedFile!==file){notify('Отчёт добавлен. Компьютер ID '+res.asset_id+'.','success');return;}await openAsset(res.asset_id);$('preview').hidden=false;$('preview').className='alert alert-success mt-3';$('preview').textContent='Отчёт добавлен в базу. Компьютер ID '+res.asset_id+'.';$('import').disabled=true;}catch(e){$('preview').className='alert alert-danger mt-3';$('preview').hidden=false;$('preview').textContent='Ошибка импорта: '+e.message;}};
+$('shutdown').onclick=async()=>{if(serverStopped||!confirm((dirty()?'Есть несохранённые изменения заметки или статуса.\n\n':'')+'Остановить GoRig Base? Чтобы продолжить работу, программу нужно будет запустить снова.'))return;try{await api('/api/shutdown',jsonPost({}));serverStopped=true;$('shutdown').disabled=true;document.querySelector('.server-badge').textContent='Сервер остановлен';notify('GoRig Base остановлен. Чтобы продолжить работу, запустите программу снова.','warning');}catch(e){notify('Не удалось остановить сервер: '+e.message);}};
+loadAssets().catch(e=>notify('Не удалось загрузить компьютеры: '+e.message));

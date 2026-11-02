@@ -4,6 +4,7 @@ package inventory
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 
 	"GoRig/internal/report"
@@ -184,6 +185,12 @@ func TestCollectionContinuesAfterCategoryError(t *testing.T) {
 }
 
 func TestExtendedInventory(t *testing.T) {
+	oldDate, oldRegistry := readInstallDate, readRegistryString
+	t.Cleanup(func() { readInstallDate, readRegistryString = oldDate, oldRegistry })
+	readInstallDate = func() report.Observation { return report.Observation{Source: "registry", Status: "unavailable"} }
+	readRegistryString = func(path, name string) report.Observation {
+		return report.Observation{Source: "registry", Status: "unavailable"}
+	}
 	previous := queryInventory
 	t.Cleanup(func() { queryInventory = previous })
 	queryInventory = func(query string, dst interface{}) error {
@@ -198,6 +205,8 @@ func TestExtendedInventory(t *testing.T) {
 			*result = []diskDriveWMI{{Model: "SSD", Size: 1000204886016, InterfaceType: "SCSI"}}
 		case *[]networkAdapterWMI:
 			*result = []networkAdapterWMI{{Name: "Ethernet", MACAddress: " aa:bb:cc:dd:ee:ff ", PhysicalAdapter: true}, {Name: "Virtual", PhysicalAdapter: false}}
+		case *[]systemProductWMI:
+			*result = []systemProductWMI{{UUID: "hardware-uuid"}}
 		case *[]firmwareWMI:
 			*result = []firmwareWMI{{Name: "BIOS", SMBIOSBIOSVersion: "1.2", ReleaseDate: "20220513000000.000000+000"}}
 		default:
@@ -231,5 +240,89 @@ func TestInvalidWMIDateIsPreserved(t *testing.T) {
 	v := wmiDate("unknown-date", "WMI")
 	if v.Status != "unavailable" || len(v.Observations) != 1 || v.Observations[0].Raw != "unknown-date" {
 		t.Fatalf("date: %+v", v)
+	}
+}
+
+func TestDateRegistryFallbackAndProductID(t *testing.T) {
+	previous, oldDate, oldRegistry := queryInventory, readInstallDate, readRegistryString
+	t.Cleanup(func() { queryInventory, readInstallDate, readRegistryString = previous, oldDate, oldRegistry })
+	readInstallDate = func() report.Observation {
+		return report.Observation{Source: "registry", Status: "error", Raw: "access denied"}
+	}
+	readRegistryString = func(path, name string) report.Observation {
+		if name == "MachineId" {
+			return report.Observation{Source: "registry device", Status: "collected", Value: "{ABC-123}", Raw: "{ABC-123}"}
+		}
+		return report.Observation{Source: "registry product", Status: "unavailable"}
+	}
+	queryInventory = func(query string, dst interface{}) error {
+		switch v := dst.(type) {
+		case *[]osDetailsWMI:
+			*v = []osDetailsWMI{{InstallDate: "20240625120100.000000+180", SerialNumber: "product-id"}}
+		case *[]computerMemoryWMI:
+			*v = []computerMemoryWMI{{}}
+		case *[]systemProductWMI:
+			*v = []systemProductWMI{{}}
+		}
+		return nil
+	}
+	d := collectDeviceAttributes()
+	if d["windows_install_date"].Value != "2024-06-25" || len(d["windows_install_date"].Observations) != 2 || d["windows_install_date"].Observations[0].Status != "error" {
+		t.Fatalf("date: %+v", d["windows_install_date"])
+	}
+	if d["windows_device_id"].Value != "ABC-123" || d["windows_product_id"].Value != "product-id" {
+		t.Fatalf("ids: %+v", d)
+	}
+}
+
+func TestInstalledMemoryFallback(t *testing.T) {
+	previous := installedMemoryObservation
+	t.Cleanup(func() { installedMemoryObservation = previous })
+	installedMemoryObservation = func() report.Observation { return report.Observation{Source: "api", Status: "error"} }
+	modules := []report.Component{{Attributes: map[string]report.Value{"capacity_bytes": {Value: "4294967296", Status: "collected"}}}}
+	if v := collectInstalledMemory(modules); v.Value != "4294967296" || v.Source != "WMI Win32_PhysicalMemory.Capacity (сумма модулей)" {
+		t.Fatalf("fallback: %+v", v)
+	}
+}
+
+func TestVolumeSpaceZeroAndNil(t *testing.T) {
+	previous := queryPointerInventory
+	t.Cleanup(func() { queryPointerInventory = previous })
+	zero, size := uint64(0), uint64(100)
+	queryPointerInventory = func(_ string, dst interface{}) error {
+		*(dst.(*[]logicalVolumeWMI)) = []logicalVolumeWMI{{DeviceID: "C:", DriveType: 3, Size: &size, FreeSpace: &zero}, {DeviceID: "D:", DriveType: 2, Size: nil, FreeSpace: nil}, {DeviceID: "Z:", DriveType: 4}}
+		return nil
+	}
+	v := collectLogicalVolumes()
+	if len(v) != 2 || v[0].Attributes["free_bytes"].Value != "0" || v[0].Attributes["free_bytes"].Status != "collected" || v[1].Attributes["capacity_bytes"].Status != "unavailable" {
+		t.Fatalf("volumes: %+v", v)
+	}
+}
+
+func TestPeripheralTypesAndIndependentFailures(t *testing.T) {
+	old := queryInventory
+	t.Cleanup(func() { queryInventory = old })
+	queryInventory = func(query string, dst interface{}) error {
+		switch d := dst.(type) {
+		case *[]monitorWMI:
+			*d = []monitorWMI{{Name: "Display", MonitorManufacturer: "Vendor", PNPDeviceID: "MONITOR\\ABC", ScreenWidth: 1920, ScreenHeight: 1080}}
+		case *[]peripheralWMI:
+			if strings.Contains(query, "Win32_Keyboard") {
+				return fmt.Errorf("keyboard error")
+			}
+			*d = []peripheralWMI{{Name: "Mouse"}}
+		case *[]printerWMI:
+			*d = []printerWMI{{Name: "Print to PDF", PortName: "PORTPROMPT:"}}
+		default:
+			return fmt.Errorf("unexpected query %s", query)
+		}
+		return nil
+	}
+	parts := collectPeripherals()
+	if len(parts) != 4 {
+		t.Fatalf("peripherals: %+v", parts)
+	}
+	if parts[0].Manufacturer.Value != "Vendor" || parts[0].Attributes["screen_width"].Value != "1920" || parts[1].Name.Observations[0].Status != "error" || parts[2].Name.Value != "Mouse" || parts[3].Name.Value != "Print to PDF" {
+		t.Fatalf("peripherals: %+v", parts)
 	}
 }

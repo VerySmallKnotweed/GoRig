@@ -20,7 +20,7 @@ import (
 //go:embed assets/tray.png
 var trayIcon []byte
 
-func runServer(server *http.Server, listener net.Listener, address string) error {
+func runServer(server *http.Server, listener net.Listener, address string, stop <-chan struct{}) error {
 	// The Win32 window and its message loop must use the same OS thread.
 	runtime.LockOSThread()
 	defer runtime.UnlockOSThread()
@@ -48,7 +48,16 @@ func runServer(server *http.Server, listener net.Listener, address string) error
 			removeTray()
 		}
 	}()
+	finished := make(chan struct{})
+	go func() {
+		select {
+		case <-stop:
+			removeTray()
+		case <-finished:
+		}
+	}()
 	trayErr := tray.Run()
+	close(finished)
 	// Once the tray closes, stop the HTTP server before the DB is closed.
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()

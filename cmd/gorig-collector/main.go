@@ -9,7 +9,7 @@ import (
 	"GoRig/internal/report"
 )
 
-const collectorVersion = "0.3.0"
+const collectorVersion = "0.4.0"
 
 func main() {
 	result, err := inventory.Collect(collectorVersion)

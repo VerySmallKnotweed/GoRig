@@ -398,6 +398,7 @@ type videoControllerWMI struct {
 	AdapterCompatibility string
 	DriverVersion        string
 	PNPDeviceID          string
+	AdapterRAM           uint32
 }
 
 // queryFailure represents an unsuccessful query without confusing it with
@@ -469,7 +470,7 @@ func collectBaseboards() []report.Component {
 
 func collectVideoControllers() []report.Component {
 	var controllers []videoControllerWMI
-	err := queryInventory("SELECT Name, AdapterCompatibility, DriverVersion, PNPDeviceID FROM Win32_VideoController", &controllers)
+	err := queryInventory("SELECT Name, AdapterCompatibility, DriverVersion, PNPDeviceID, AdapterRAM FROM Win32_VideoController", &controllers)
 	if err != nil || len(controllers) == 0 {
 		return queryFailure("video", "WMI Win32_VideoController", err)
 	}
@@ -482,8 +483,9 @@ func collectVideoControllers() []report.Component {
 			Model:        report.Value{Status: "not_collected"},
 			SerialNumber: report.Value{Status: "not_collected"},
 			Attributes: map[string]report.Value{
-				"driver_version": wmiString(controller.DriverVersion, "WMI Win32_VideoController.DriverVersion"),
-				"pnp_device_id":  wmiString(controller.PNPDeviceID, "WMI Win32_VideoController.PNPDeviceID"),
+				"driver_version":     wmiString(controller.DriverVersion, "WMI Win32_VideoController.DriverVersion"),
+				"pnp_device_id":      wmiString(controller.PNPDeviceID, "WMI Win32_VideoController.PNPDeviceID"),
+				"video_memory_bytes": wmiNumber(uint64(controller.AdapterRAM), "WMI Win32_VideoController.AdapterRAM"),
 			},
 		})
 	}

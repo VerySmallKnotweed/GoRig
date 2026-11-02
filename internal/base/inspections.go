@@ -74,6 +74,10 @@ func summary(r report.Report) map[string]string {
 		}
 		sort.Strings(keys)
 		for _, k := range keys {
+			// Free disk space changes constantly; it is telemetry, not configuration.
+			if c.Type == "volume" && k == "free_bytes" {
+				continue
+			}
 			add(attributeLabel(k), value(c.Attributes[k]))
 		}
 		// An error/no-instance placeholder is not an installed component.
@@ -104,6 +108,16 @@ func componentLabel(kind string) string {
 		return "сетевые адаптеры"
 	case "bios":
 		return "BIOS"
+	case "volume":
+		return "логические тома"
+	case "monitor":
+		return "мониторы"
+	case "keyboard":
+		return "клавиатуры"
+	case "mouse":
+		return "указательные устройства"
+	case "printer":
+		return "принтеры"
 	default:
 		return kind
 	}
@@ -121,6 +135,34 @@ func attributeLabel(key string) string {
 		return "PNP ID"
 	case "total_memory_bytes":
 		return "Доступная системе физическая память, байт"
+	case "installed_memory_bytes":
+		return "Установленная физическая память, байт"
+	case "windows_device_id":
+		return "Код устройства Windows (SQM)"
+	case "windows_product_id":
+		return "Код продукта Windows"
+	case "hardware_uuid":
+		return "Аппаратный UUID"
+	case "system_type":
+		return "Тип процессора и системы"
+	case "touch_support":
+		return "Перо и сенсорный ввод"
+	case "video_memory_bytes":
+		return "Видеопамять по данным WMI, байт"
+	case "free_bytes":
+		return "Свободно на томе, байт"
+	case "filesystem":
+		return "Файловая система"
+	case "volume_type":
+		return "Тип тома"
+	case "printer_driver":
+		return "Драйвер принтера"
+	case "printer_port":
+		return "Порт принтера"
+	case "screen_width":
+		return "Ширина экрана, пикселей"
+	case "screen_height":
+		return "Высота экрана, пикселей"
 	case "windows_name":
 		return "Редакция Windows"
 	case "windows_version":
