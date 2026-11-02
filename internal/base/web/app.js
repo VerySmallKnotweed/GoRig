@@ -20,7 +20,7 @@ function byType(r,type){return (r.device?.components||[]).filter(c=>c.type===typ
 function shortComponent(c){return itemValue(c.model)?v(c.model):v(c.name);}
 function installedMemory(r){
   const recorded=r.device?.attributes?.installed_memory_bytes;
-  if(itemValue(recorded))return formatted(recorded,'installed_memory_bytes');
+  if(itemValue(recorded))return formatted(recorded,'installed_memory_bytes')+(String(recorded.source||'').includes('сумма модулей')?' (сумма обнаруженных модулей)':'');
   const modules=(r.device?.components||[]).filter(c=>c.type==='memory');
   if(!modules.length||modules.some(c=>!itemValue(c.attributes?.capacity_bytes)||!/^\d+$/.test(String(c.attributes.capacity_bytes.value))))return 'Нет данных';
   let total=0;for(const m of modules){const n=Number(m.attributes.capacity_bytes.value);if(!Number.isSafeInteger(n)||n<=0||!Number.isSafeInteger(total+n))return 'Нет данных';total+=n;}
