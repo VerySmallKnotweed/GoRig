@@ -353,3 +353,123 @@ func collectDiskDrives() []report.Component {
 
 	return components
 }
+
+// Null properties are common in firmware; leave them as zero values rather
+// than failing the entire query when an individual field is missing.
+var nullableWMI = &wmi.Client{NonePtrZero: true}
+
+var queryInventory = func(query string, dst interface{}) error {
+	return nullableWMI.Query(query, dst)
+}
+
+type physicalMemoryWMI struct {
+	Manufacturer  string
+	PartNumber    string
+	SerialNumber  string
+	DeviceLocator string
+	Capacity      uint64
+	Speed         uint32
+}
+
+type baseboardWMI struct {
+	Manufacturer string
+	Product      string
+	SerialNumber string
+}
+
+type videoControllerWMI struct {
+	Name                 string
+	AdapterCompatibility string
+	DriverVersion        string
+	PNPDeviceID          string
+}
+
+// queryFailure represents an unsuccessful query without confusing it with
+// an actually installed component. Details remain in the observations.
+func queryFailure(componentType, source string, err error) []report.Component {
+	observation := report.Observation{Source: source, Status: "unavailable", Raw: "query returned no instances"}
+	if err != nil {
+		observation.Status = "error"
+		observation.Raw = err.Error()
+	}
+	value := selectPrimaryValue([]report.Observation{observation})
+	return []report.Component{{Type: componentType, Name: value,
+		Manufacturer: value, Model: value, SerialNumber: value}}
+}
+
+func wmiString(value, source string) report.Value {
+	return selectPrimaryValue([]report.Observation{makeObservation(value, source)})
+}
+
+// Zero is also how WMI null/unspecified numeric properties are decoded.
+func wmiNumber(value uint64, source string) report.Value {
+	if value == 0 {
+		return wmiString("", source)
+	}
+	return wmiString(fmt.Sprintf("%d", value), source)
+}
+
+func collectMemory() []report.Component {
+	var modules []physicalMemoryWMI
+	err := queryInventory("SELECT Manufacturer, PartNumber, SerialNumber, DeviceLocator, Capacity, Speed FROM Win32_PhysicalMemory", &modules)
+	if err != nil || len(modules) == 0 {
+		return queryFailure("memory", "WMI Win32_PhysicalMemory", err)
+	}
+	components := make([]report.Component, 0, len(modules))
+	for _, module := range modules {
+		components = append(components, report.Component{
+			Type:         "memory",
+			Name:         wmiString(module.DeviceLocator, "WMI Win32_PhysicalMemory.DeviceLocator"),
+			Manufacturer: wmiString(module.Manufacturer, "WMI Win32_PhysicalMemory.Manufacturer"),
+			Model:        wmiString(module.PartNumber, "WMI Win32_PhysicalMemory.PartNumber"),
+			SerialNumber: wmiString(module.SerialNumber, "WMI Win32_PhysicalMemory.SerialNumber"),
+			Attributes: map[string]report.Value{
+				"capacity_bytes": wmiNumber(module.Capacity, "WMI Win32_PhysicalMemory.Capacity"),
+				"speed_mhz":      wmiNumber(uint64(module.Speed), "WMI Win32_PhysicalMemory.Speed"),
+			},
+		})
+	}
+	return components
+}
+
+func collectBaseboards() []report.Component {
+	var boards []baseboardWMI
+	err := queryInventory("SELECT Manufacturer, Product, SerialNumber FROM Win32_BaseBoard", &boards)
+	if err != nil || len(boards) == 0 {
+		return queryFailure("motherboard", "WMI Win32_BaseBoard", err)
+	}
+	components := make([]report.Component, 0, len(boards))
+	for _, board := range boards {
+		components = append(components, report.Component{
+			Type:         "motherboard",
+			Name:         wmiString(board.Product, "WMI Win32_BaseBoard.Product"),
+			Manufacturer: wmiString(board.Manufacturer, "WMI Win32_BaseBoard.Manufacturer"),
+			Model:        wmiString(board.Product, "WMI Win32_BaseBoard.Product"),
+			SerialNumber: wmiString(board.SerialNumber, "WMI Win32_BaseBoard.SerialNumber"),
+		})
+	}
+	return components
+}
+
+func collectVideoControllers() []report.Component {
+	var controllers []videoControllerWMI
+	err := queryInventory("SELECT Name, AdapterCompatibility, DriverVersion, PNPDeviceID FROM Win32_VideoController", &controllers)
+	if err != nil || len(controllers) == 0 {
+		return queryFailure("video", "WMI Win32_VideoController", err)
+	}
+	components := make([]report.Component, 0, len(controllers))
+	for _, controller := range controllers {
+		components = append(components, report.Component{
+			Type:         "video",
+			Name:         wmiString(controller.Name, "WMI Win32_VideoController.Name"),
+			Manufacturer: wmiString(controller.AdapterCompatibility, "WMI Win32_VideoController.AdapterCompatibility"),
+			Model:        report.Value{Status: "not_collected"},
+			SerialNumber: report.Value{Status: "not_collected"},
+			Attributes: map[string]report.Value{
+				"driver_version": wmiString(controller.DriverVersion, "WMI Win32_VideoController.DriverVersion"),
+				"pnp_device_id":  wmiString(controller.PNPDeviceID, "WMI Win32_VideoController.PNPDeviceID"),
+			},
+		})
+	}
+	return components
+}

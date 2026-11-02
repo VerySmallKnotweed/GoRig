@@ -38,5 +38,9 @@ func Collect(collectorVersion string) (report.Report, error) {
 		collectDiskDrives()...,
 	)
 
+	result.Device.Components = append(result.Device.Components, collectMemory()...)
+	result.Device.Components = append(result.Device.Components, collectBaseboards()...)
+	result.Device.Components = append(result.Device.Components, collectVideoControllers()...)
+
 	return result, nil
 }

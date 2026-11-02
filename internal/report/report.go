@@ -31,6 +31,8 @@ type Component struct {
 	Manufacturer Value  `json:"manufacturer"`
 	Model        Value  `json:"model"`
 	SerialNumber Value  `json:"serial_number"`
+	// Optional, type-specific properties. Existing reports remain valid.
+	Attributes map[string]Value `json:"attributes,omitempty"`
 }
 
 type Value struct {

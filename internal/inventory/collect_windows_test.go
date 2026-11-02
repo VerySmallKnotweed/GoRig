@@ -3,6 +3,7 @@
 package inventory
 
 import (
+	"fmt"
 	"testing"
 
 	"GoRig/internal/report"
@@ -93,5 +94,91 @@ func TestMakeObservationMarksTemplate(t *testing.T) {
 	}
 	if got.Value != "Default string" || got.Raw != "Default string" {
 		t.Errorf("исходное значение изменилось: %+v", got)
+	}
+}
+
+func TestWMICategoryFailure(t *testing.T) {
+	for _, tc := range []struct {
+		err    error
+		status string
+	}{
+		{nil, "unavailable"},
+		{fmt.Errorf("WMI failed"), "error"},
+	} {
+		components := queryFailure("memory", "WMI Win32_PhysicalMemory", tc.err)
+		if len(components) != 1 || components[0].Type != "memory" {
+			t.Fatalf("components: %+v", components)
+		}
+		observations := components[0].Name.Observations
+		if len(observations) != 1 || observations[0].Status != tc.status {
+			t.Fatalf("observations: %+v", observations)
+		}
+	}
+}
+
+func TestWMINumber(t *testing.T) {
+	zero := wmiNumber(0, "WMI Capacity")
+	if zero.Status != "unavailable" {
+		t.Fatalf("zero: %+v", zero)
+	}
+	capacity := wmiNumber(17179869184, "WMI Capacity")
+	if capacity.Value != "17179869184" || capacity.Status != "collected" {
+		t.Fatalf("capacity: %+v", capacity)
+	}
+}
+
+func TestNewComponentCollection(t *testing.T) {
+	previous := queryInventory
+	t.Cleanup(func() { queryInventory = previous })
+	queryInventory = func(query string, dst interface{}) error {
+		switch result := dst.(type) {
+		case *[]physicalMemoryWMI:
+			*result = []physicalMemoryWMI{
+				{DeviceLocator: "DIMM 1", Manufacturer: "Maker", PartNumber: "Part", SerialNumber: "S1", Capacity: 8589934592, Speed: 3200},
+				{DeviceLocator: "DIMM 2", Capacity: 4294967296},
+			}
+		case *[]baseboardWMI:
+			*result = []baseboardWMI{{Manufacturer: "Maker", Product: "Board", SerialNumber: "B1"}}
+		case *[]videoControllerWMI:
+			*result = []videoControllerWMI{{Name: "GPU", AdapterCompatibility: "Vendor", PNPDeviceID: "PCI-ID", DriverVersion: "1.2"}}
+		default:
+			return fmt.Errorf("unexpected query: %s", query)
+		}
+		return nil
+	}
+	memory := collectMemory()
+	if len(memory) != 2 || memory[0].Name.Value != "DIMM 1" || memory[0].Model.Value != "Part" || memory[0].Attributes["capacity_bytes"].Value != "8589934592" || memory[1].Attributes["speed_mhz"].Status != "unavailable" {
+		t.Fatalf("memory: %+v", memory)
+	}
+	boards := collectBaseboards()
+	if len(boards) != 1 || boards[0].Model.Value != "Board" || boards[0].SerialNumber.Value != "B1" {
+		t.Fatalf("boards: %+v", boards)
+	}
+	video := collectVideoControllers()
+	if len(video) != 1 || video[0].Name.Value != "GPU" || video[0].Attributes["pnp_device_id"].Value != "PCI-ID" || video[0].SerialNumber.Status != "not_collected" {
+		t.Fatalf("video: %+v", video)
+	}
+}
+
+func TestCollectionContinuesAfterCategoryError(t *testing.T) {
+	previous := queryInventory
+	t.Cleanup(func() { queryInventory = previous })
+	queryInventory = func(query string, dst interface{}) error {
+		switch result := dst.(type) {
+		case *[]physicalMemoryWMI:
+			return fmt.Errorf("WMI failed")
+		case *[]baseboardWMI:
+			*result = []baseboardWMI{{Product: "Board"}}
+		}
+		return nil
+	}
+	if got := collectMemory()[0].Name.Observations[0].Status; got != "error" {
+		t.Fatalf("status: %s", got)
+	}
+	if got := collectBaseboards()[0].Model.Value; got != "Board" {
+		t.Fatalf("board: %s", got)
+	}
+	if got := collectVideoControllers()[0].Name.Observations[0].Status; got != "unavailable" {
+		t.Fatalf("empty status: %s", got)
 	}
 }
