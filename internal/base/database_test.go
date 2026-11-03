@@ -456,3 +456,24 @@ func TestIPIsNotConfiguration(t *testing.T) {
 		t.Fatalf("IP telemetry differs: %+v", d)
 	}
 }
+
+func TestDashboardNavigationAndModalMarkup(t *testing.T) {
+	data, err := files.ReadFile("web/index.html")
+	if err != nil {
+		t.Fatal(err)
+	}
+	markup := string(data)
+	for _, snippet := range []string{
+		`href="#/organizations"`, `href="#/reports"`,
+		`id="org-toggle" type="button" aria-label="Раскрыть или свернуть организации" aria-expanded="true"`,
+		`id="reports-toggle" type="button" aria-label="Раскрыть или свернуть отчёты" aria-expanded="true"`,
+		`id="page-organizations"`, `id="page-reports"`,
+		`id="rename-org-modal"`, `id="rename-org-form"`,
+		`id="delete-org-modal"`, `id="delete-org-form"`,
+		`id="top-import"`,
+	} {
+		if !strings.Contains(markup, snippet) {
+			t.Errorf("dashboard markup is missing %q", snippet)
+		}
+	}
+}

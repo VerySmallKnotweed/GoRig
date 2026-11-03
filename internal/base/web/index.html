@@ -8,36 +8,49 @@
 </head>
 <body><div class="app-shell">
   <aside class="sidebar">
-    <a class="brand" href="#/overview" aria-label="GoRig Base — главная"><span class="brand-mark">G</span><span><strong>GoRig</strong><small>BASE / ИНВЕНТАРИЗАЦИЯ</small></span></a>
+    <a class="brand" href="#/overview" aria-label="GoRig Base — главная"><span class="brand-mark">G</span><span><strong>Go<span class="brand-accent">Rig</span></strong><small>BASE / ИНВЕНТАРИЗАЦИЯ</small></span></a>
     <div class="nav-label">РАБОЧЕЕ ПРОСТРАНСТВО</div>
     <nav class="side-nav" aria-label="Навигация">
       <a class="side-link" data-nav="overview" href="#/overview"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></span> Обзор</a>
-      <button class="side-link nav-toggle" data-nav="organizations" id="org-toggle" type="button" aria-expanded="false" aria-controls="org-nav"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18M5 21V6l7-3 7 3v15M9 9h1m4 0h1M9 13h1m4 0h1M10 21v-4h4v4"/></svg></span> Организации <span class="nav-chevron">⌄</span></button>
-      <div id="org-nav" class="nav-submenu" hidden></div>
-      <button class="side-link nav-toggle" data-nav="reports" id="reports-toggle" type="button" aria-expanded="false" aria-controls="reports-nav"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3h10l4 4v14H5zM15 3v4h4M8 16l3-3 2 2 3-4M8 9h4"/></svg></span> Отчёты <span class="nav-chevron">⌄</span></button>
-      <div id="reports-nav" class="nav-submenu" hidden><a href="#/reports">Аналитические отчёты</a></div>
+      <div class="nav-group org-group">
+        <div class="nav-group-head" data-nav="organizations">
+          <a class="side-link nav-group-link" href="#/organizations"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18M5 21V6l7-3 7 3v15M9 9h1m4 0h1M9 13h1m4 0h1M10 21v-4h4v4"/></svg></span> Организации</a>
+          <button class="nav-toggle" id="org-toggle" type="button" aria-label="Раскрыть или свернуть организации" aria-expanded="true" aria-controls="org-nav"><span class="nav-chevron" aria-hidden="true">⌄</span></button>
+        </div><div id="org-nav" class="nav-submenu"></div>
+      </div>
+      <div class="nav-group reports-group">
+        <div class="nav-group-head" data-nav="reports">
+          <a class="side-link nav-group-link" href="#/reports"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3h10l4 4v14H5zM15 3v4h4M8 16l3-3 2 2 3-4M8 9h4"/></svg></span> Отчёты</a>
+          <button class="nav-toggle" id="reports-toggle" type="button" aria-label="Раскрыть или свернуть отчёты" aria-expanded="true" aria-controls="reports-nav"><span class="nav-chevron" aria-hidden="true">⌄</span></button>
+        </div><div id="reports-nav" class="nav-submenu"><a href="#/reports">Аналитические отчёты</a></div>
+      </div>
       <a class="side-link" data-nav="settings" href="#/settings"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M4.93 4.93l1.41 1.41m11.32 11.32 1.41 1.41m0-14.14-1.41 1.41M6.34 17.66l-1.41 1.41"/></svg></span> Настройки</a>
     </nav>
     <div class="sidebar-bottom"><span class="live-dot"></span><span><strong>Локальная база</strong><small>Данные на этом компьютере</small></span></div>
   </aside>
   <div class="workspace">
-    <header class="topbar"><div class="breadcrumbs"><span>Рабочее пространство</span><span class="crumb-sep">/</span><strong id="breadcrumb">Обзор</strong></div><div class="top-actions"><span class="server-badge"><span class="live-dot"></span> Сервер работает</span><button type="button" id="shutdown" class="btn btn-sm exit-btn"><span class="power-icon" aria-hidden="true">↪</span> Выключить сервер</button></div></header>
+    <header class="topbar"><a href="#/import" id="top-import" class="btn btn-primary top-import" hidden>ИМПОРТИРОВАТЬ ОТЧЁТ</a><div class="breadcrumbs" id="breadcrumbs"><span>Рабочее пространство</span><span class="crumb-sep">/</span><strong id="breadcrumb">Обзор</strong></div><div class="top-actions"><span class="server-badge"><span class="live-dot"></span> Сервер работает</span><button type="button" id="shutdown" class="btn btn-sm exit-btn"><span class="power-icon" aria-hidden="true">↪</span> Выключить сервер</button></div></header>
     <main class="content">
       <div id="global-message" class="alert d-none" role="status"></div>
       <section id="page-overview" class="page">
-        <div class="page-heading"><div><div class="eyebrow">ПАНЕЛЬ УПРАВЛЕНИЯ</div><h1>Обзор оборудования</h1><p>Весь парк оборудования в одном месте.</p></div><a href="#/import" class="btn btn-primary main-action"><span>+</span> Импортировать отчёт</a></div>
+        <div class="page-heading overview-heading"><h1>ОБЗОР ОБОРУДОВАНИЯ</h1></div>
         <div class="row g-3 stats-row" aria-label="Статистика компьютеров">
-          <div class="col-6 col-xl-3"><div class="stat-card stat-purple"><div class="stat-top"><span>Всего</span><span class="stat-icon" aria-hidden="true"><svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="4" stroke-linejoin="round"><rect x="7" y="9" width="50" height="35" rx="4"/><path d="M24 54h16M32 44v10"/></svg></span></div><strong id="stat-all">0</strong><small>Компьютеров</small><div class="stat-track" aria-hidden="true"><span id="stat-bar-all"></span></div></div></div>
-          <div class="col-6 col-xl-3"><div class="stat-card stat-green"><div class="stat-top"><span>В работе</span><span class="stat-icon" aria-hidden="true"><svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><circle cx="32" cy="32" r="24"/><path d="m20 32 8 8 16-17"/></svg></span></div><strong id="stat-in_use">0</strong><small>Используются сейчас</small><div class="stat-track" aria-hidden="true"><span id="stat-bar-in_use"></span></div></div></div>
-          <div class="col-6 col-xl-3"><div class="stat-card stat-amber"><div class="stat-top"><span>В резерве</span><span class="stat-icon" aria-hidden="true"><svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><circle cx="32" cy="32" r="24"/><path d="M32 17v16l11 7"/></svg></span></div><strong id="stat-reserve">0</strong><small>На хранении</small><div class="stat-track" aria-hidden="true"><span id="stat-bar-reserve"></span></div></div></div>
-          <div class="col-6 col-xl-3"><div class="stat-card stat-gray"><div class="stat-top"><span>Выбыли</span><span class="stat-icon" aria-hidden="true"><svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><circle cx="32" cy="32" r="24"/><path d="M22 32h20"/></svg></span></div><strong id="stat-retired">0</strong><small>История сохранена</small><div class="stat-track" aria-hidden="true"><span id="stat-bar-retired"></span></div></div></div>
+          <div class="col-6 col-xl-3"><div class="stat-card stat-purple"><div class="stat-top"><span>Всего</span><span class="stat-icon" aria-hidden="true"><svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="4" stroke-linejoin="round"><rect x="7" y="9" width="50" height="35" rx="4"/><path d="M24 54h16M32 44v10"/></svg></span></div><strong id="stat-all">0</strong><div class="stat-track" aria-hidden="true"><span id="stat-bar-all"></span></div></div></div>
+          <div class="col-6 col-xl-3"><div class="stat-card stat-green"><div class="stat-top"><span>В работе</span><span class="stat-icon" aria-hidden="true"><svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><circle cx="32" cy="32" r="24"/><path d="m20 32 8 8 16-17"/></svg></span></div><strong id="stat-in_use">0</strong><div class="stat-track" aria-hidden="true"><span id="stat-bar-in_use"></span></div></div></div>
+          <div class="col-6 col-xl-3"><div class="stat-card stat-amber"><div class="stat-top"><span>В резерве</span><span class="stat-icon" aria-hidden="true"><svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><circle cx="32" cy="32" r="24"/><path d="M32 17v16l11 7"/></svg></span></div><strong id="stat-reserve">0</strong><div class="stat-track" aria-hidden="true"><span id="stat-bar-reserve"></span></div></div></div>
+          <div class="col-6 col-xl-3"><div class="stat-card stat-gray"><div class="stat-top"><span>Выбыли</span><span class="stat-icon" aria-hidden="true"><svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><circle cx="32" cy="32" r="24"/><path d="M22 32h20"/></svg></span></div><strong id="stat-retired">0</strong><div class="stat-track" aria-hidden="true"><span id="stat-bar-retired"></span></div></div></div>
         </div>
-        <div class="section-title"><div><div class="eyebrow">ОБЗОР ПАРКА</div><h2>Организации</h2><p class="subtle">Состав и состояния компьютеров в каждой организации.</p></div><a href="#/settings" class="btn btn-outline-secondary btn-sm">Управление организациями</a></div>
+        <div class="section-title"><div><h2>Организации</h2><p class="subtle">Состав и состояния компьютеров в каждой организации.</p></div><a href="#/settings" class="btn btn-outline-secondary btn-sm">Управление организациями</a></div>
         <div id="organization-cards" class="organization-grid"></div>
       </section>
+      <section id="page-organizations" class="page" hidden>
+        <div class="page-heading"><h1>Организации</h1><a href="#/settings" class="btn btn-outline-secondary main-action">Управление организациями</a></div>
+        <div class="section-title"><div><h2>Все организации</h2><p class="subtle">Выберите организацию, чтобы посмотреть её компьютеры.</p></div></div>
+        <div id="all-organization-cards" class="organization-grid"></div>
+      </section>
       <section id="page-organization" class="page" hidden>
-        <div class="page-heading"><div><div class="eyebrow">ПАНЕЛЬ УПРАВЛЕНИЯ</div><h1 id="org-title"></h1><p id="org-subtitle"></p></div><a href="#/overview" class="btn btn-outline-secondary main-action">На главную</a></div>
-        <div class="section-title"><div><div class="eyebrow">СОСТАВ ОРГАНИЗАЦИИ</div><h2>Компьютеры <span class="count-badge" id="org-count"></span></h2></div><div><label for="filter" class="form-label small">Статус</label><select id="filter" class="form-select form-select-sm"><option value="all">Все компьютеры</option><option value="in_use">В работе</option><option value="reserve">В резерве</option><option value="retired">Выбыли</option></select></div></div>
+        <div class="page-heading"><div class="title-line"><h1 id="org-title"></h1><span id="org-subtitle" class="title-count"></span></div><a href="#/overview" class="btn btn-outline-secondary main-action">На главную</a></div>
+        <div class="section-title"><div><h2>Компьютеры <span class="count-badge" id="org-count"></span></h2></div><div><label for="filter" class="form-label small">Статус</label><select id="filter" class="form-select form-select-sm"><option value="all">Все компьютеры</option><option value="in_use">В работе</option><option value="reserve">В резерве</option><option value="retired">Выбыли</option></select></div></div>
         <div id="asset-list" class="pc-grid"></div>
       </section>
       <section id="page-import" class="page" hidden>
@@ -63,9 +76,24 @@
         </section></div></div>
       </section>
       <section id="page-reports" class="page" hidden><div class="page-heading"><div><div class="eyebrow">ПАНЕЛЬ УПРАВЛЕНИЯ</div><h1>Аналитические отчёты</h1><p>Формы отчётов будут добавлены позже.</p></div><a href="#/overview" class="btn btn-outline-secondary main-action">На главную</a></div><div class="surface empty-report"><div class="empty-icon">▧</div><h3>Раздел в разработке</h3><p>Здесь будут доступны аналитические отчёты по всему парку и организациям.</p></div></section>
-      <section id="page-settings" class="page" hidden><div class="page-heading"><div><div class="eyebrow">ПАНЕЛЬ УПРАВЛЕНИЯ</div><h1>Настройки системы</h1><p>Управление организациями</p></div><a href="#/overview" class="btn btn-outline-secondary main-action">Вернуться на главную</a></div><div class="surface settings-surface"><div class="surface-head"><div><div class="eyebrow">ОРГАНИЗАЦИИ</div><h2>Организации</h2><p class="subtle">При удалении компьютеры останутся в базе без организации.</p></div></div><form id="org-form" class="org-form"><label for="org-name" class="visually-hidden">Название организации</label><input id="org-name" class="form-control" maxlength="100" placeholder="Название организации" required><button class="btn btn-primary" type="submit">Создать</button></form><div id="org-message" class="small mt-2" role="status"></div><div id="org-settings-list" class="settings-list"></div></div></section>
+      <section id="page-settings" class="page" hidden><div class="page-heading"><h1>Управление организациями</h1><a href="#/overview" class="btn btn-outline-secondary main-action">Вернуться на главную</a></div><div class="surface settings-surface"><div class="surface-head"><div><div class="eyebrow">ОРГАНИЗАЦИИ</div><h2>Организации</h2><p class="subtle">При удалении компьютеры останутся в базе без организации.</p></div></div><form id="org-form" class="org-form"><label for="org-name" class="visually-hidden">Название организации</label><input id="org-name" class="form-control" maxlength="100" placeholder="Название организации" required><button class="btn btn-primary" type="submit">Создать</button></form><div id="org-message" class="small mt-2" role="status"></div><div id="org-settings-list" class="settings-list"></div></div></section>
       <div id="report-storage" hidden><section class="surface report-surface" id="report-panel"><div class="surface-head"><div><div class="eyebrow">ОБСЛЕДОВАНИЕ</div><h2>Сведения о компьютере</h2><p class="subtle">Характеристики доступны только для просмотра.</p></div><span id="report-origin" class="origin-badge" hidden></span></div><div id="empty-report" class="empty-report"><div class="empty-icon">▣</div><h3>Отчёт не выбран</h3><p>Выберите файл для предварительного просмотра.</p></div><div id="report-content" hidden><div class="device-hero"><div class="device-avatar">▣</div><div class="device-heading"><div class="eyebrow">ИМЯ УСТРОЙСТВА</div><h3 id="device-name"></h3><p id="device-subtitle"></p></div><span id="device-state" class="device-state">ОТЧЁТ</span></div><div id="report-meta" class="report-meta"></div><div id="overview-details" class="spec-list"></div><div id="quality" class="alert alert-warning quality" hidden></div><div id="device"></div><div id="components"></div><details class="raw-details"><summary>Исходный JSON и источники</summary><pre id="raw"></pre></details></div></section></div>
       <footer class="app-footer"><span>Created by a <strong>StrangeFragment</strong> in 2©26</span></footer>
     </main>
   </div>
-</div></body></html>
+</div>
+<div class="modal fade" id="rename-org-modal" tabindex="-1" aria-labelledby="rename-org-title" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered"><div class="modal-content"><form id="rename-org-form">
+    <div class="modal-header"><h2 class="modal-title fs-5" id="rename-org-title">Переименовать организацию</h2><button type="button" class="modal-close" data-bs-dismiss="modal" aria-label="Закрыть">×</button></div>
+    <div class="modal-body"><label class="form-label" for="rename-org-input">Название организации</label><input id="rename-org-input" class="form-control" maxlength="100" required><div class="modal-error" id="rename-org-error" role="alert"></div></div>
+    <div class="modal-footer"><button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Отмена</button><button type="submit" class="btn btn-primary" id="rename-org-confirm">Сохранить</button></div>
+  </form></div></div>
+</div>
+<div class="modal fade" id="delete-org-modal" tabindex="-1" aria-labelledby="delete-org-title" aria-describedby="delete-org-description" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered"><div class="modal-content"><form id="delete-org-form">
+    <div class="modal-header"><h2 class="modal-title fs-5" id="delete-org-title">Удалить организацию?</h2><button type="button" class="modal-close" data-bs-dismiss="modal" aria-label="Закрыть">×</button></div>
+    <div class="modal-body"><p id="delete-org-description">Организация <strong id="delete-org-name"></strong> будет удалена. Компьютеры и история останутся в базе без организации.</p><div class="modal-error" id="delete-org-error" role="alert"></div></div>
+    <div class="modal-footer"><button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Отмена</button><button type="submit" class="btn btn-danger" id="delete-org-confirm">Удалить</button></div>
+  </form></div></div>
+</div>
+</body></html>

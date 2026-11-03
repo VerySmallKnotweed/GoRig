@@ -65,26 +65,39 @@ let organizations=[], activeOrg=0, currentPage='', lastHash='', reverting=false;
 async function api(path,opts){const r=await fetch(path,opts);if(!r.ok)throw new Error((await r.text()).trim()||('HTTP '+r.status));return r.json();}
 function jsonPost(obj,method='POST'){return {method,headers:{'Content-Type':'application/json'},body:JSON.stringify(obj)};}
 function notify(text,kind='danger'){const el=$('global-message');el.textContent=text;el.className='alert alert-'+kind;}
+const russianPlurals = new Intl.PluralRules('ru-RU');
+function computerCount(n){const forms={one:'компьютер',few:'компьютера',many:'компьютеров',other:'компьютера'};return n+' '+forms[russianPlurals.select(n)];}
 function orgName(id){return organizations.find(o=>o.id===id)?.name||(id?'Организация не найдена':'Без организации');}
 function fillOrganizations(){
   for(const select of document.querySelectorAll('.org-select')){const old=select.value;clear(select);select.append(new Option('Без организации','0'));for(const o of organizations)select.append(new Option(o.name,String(o.id)));select.value=[...select.options].some(x=>x.value===old)?old:'0';}
-  const menu=$('org-nav');clear(menu);for(const o of organizations){const a=node('a',o.name);a.href='#/organizations/'+o.id;menu.append(a);}const unassigned=node('a','Без организации');unassigned.href='#/organizations/0';menu.append(unassigned);
+  const menu=$('org-nav');clear(menu);for(const o of organizations){const a=node('a',o.name);a.href='#/organizations/'+o.id;a.title=o.name;menu.append(a);}const unassigned=node('a','Без организации');unassigned.href='#/organizations/0';menu.append(unassigned);highlightSubmenu();
 }
+function highlightSubmenu(){const hash=location.hash||'#/overview';for(const a of document.querySelectorAll('.nav-submenu a')){if(a.getAttribute('href')===hash)a.setAttribute('aria-current','page');else a.removeAttribute('aria-current');}}
 function stats(){
   $('stat-all').textContent=assets.length;$('stat-bar-all').style.width=assets.length?'100%':'0%';
   for(const key of ['in_use','reserve','retired']){const n=assets.filter(a=>a.status===key).length;$('stat-'+key).textContent=n;$('stat-bar-'+key).style.width=(assets.length?n/assets.length*100:0)+'%';}
 }
 function renderOverview(){
-  stats();const root=$('organization-cards');clear(root);
-  const groups=[...organizations,{id:0,name:'Без организации'}];
-  for(const o of groups){const members=assets.filter(a=>a.organization_id===o.id);const card=node('a',undefined,'organization-card');card.href='#/organizations/'+o.id;
-    const head=node('div',undefined,'org-card-head');head.append(node('span','▤','org-card-icon'),node('span','Открыть →','org-card-link'));card.append(head,node('h3',o.name),node('p',members.length+' компьютеров','org-total'));
-    const breakdown=node('div',undefined,'org-breakdown');for(const k of ['in_use','reserve','retired']){const part=node('span');part.append(node('b',String(members.filter(a=>a.status===k).length)),document.createTextNode(' '+assetStatuses[k]));breakdown.append(part);}card.append(breakdown);root.append(card);
+  stats();
+  for(const root of [$('organization-cards'),$('all-organization-cards')]){
+    clear(root);
+    for(const o of [...organizations,{id:0,name:'Без организации'}]){
+      const members=assets.filter(a=>a.organization_id===o.id);
+      const card=node('a',undefined,'organization-card');card.href='#/organizations/'+o.id;
+      const head=node('div',undefined,'org-card-head');head.append(node('span','▤','org-card-icon'),node('span','Открыть →','org-card-link'));
+      card.append(head,node('h3',o.name),node('p',computerCount(members.length),'org-total'));
+      const breakdown=node('div',undefined,'org-breakdown');
+      for(const k of ['in_use','reserve','retired']){
+        const count=members.filter(a=>a.status===k).length, label=assetStatuses[k]+': '+count;
+        const part=node('span',String(count),'org-metric metric-'+k);part.title=label;part.setAttribute('role','img');part.setAttribute('aria-label',label);breakdown.append(part);
+      }
+      card.append(breakdown);root.append(card);
+    }
   }
 }
 function renderOrganization(id){
   activeOrg=id;const org=organizations.find(x=>x.id===id);if(id&&!org){notify('Организация не найдена.');location.hash='#/overview';return;}
-  $('org-title').textContent=orgName(id);const members=assets.filter(a=>a.organization_id===id);$('org-subtitle').textContent='Компьютеры организации · '+members.length;
+  $('org-title').textContent=orgName(id);const members=assets.filter(a=>a.organization_id===id);$('org-subtitle').textContent=computerCount(members.length);
   const shown=members.filter(a=>$('filter').value==='all'||a.status===$('filter').value);$('org-count').textContent=shown.length+' / '+members.length;
   const root=$('asset-list');clear(root);if(!shown.length){root.append(node('div','В этой категории пока нет компьютеров.','surface subtle'));return;}
   for(const a of shown){const card=node('a',undefined,'pc-card '+(a.cpu_vendor==='intel'?'pc-intel':a.cpu_vendor==='amd'?'pc-amd':'pc-unknown'));card.href='#/asset/'+a.id;
@@ -92,12 +105,48 @@ function renderOrganization(id){
     const foot=node('div',undefined,'pc-card-foot');foot.append(node('span',assetStatuses[a.status]||a.status,'status-'+a.status),node('span','Подробнее →'));card.append(foot);root.append(card);
   }
 }
-function renderSettings(){const root=$('org-settings-list');clear(root);if(!organizations.length){root.append(node('p','Организаций пока нет.','subtle py-3'));return;}for(const o of organizations){const row=node('div',undefined,'org-setting-row');const name=node('div',undefined,'org-setting-name');name.append(node('strong',o.name),node('small',assets.filter(a=>a.organization_id===o.id).length+' компьютеров'));const edit=node('button','Переименовать','btn btn-outline-secondary btn-sm');edit.type='button';edit.onclick=async()=>{const next=prompt('Новое название организации:',o.name);if(next===null)return;try{await api('/api/organizations/'+o.id,jsonPost({name:next},'PUT'));await reloadData();$('org-message').textContent='Название обновлено.';}catch(e){$('org-message').textContent='Ошибка: '+e.message;}};
-    const del=node('button','Удалить','btn btn-outline-danger btn-sm');del.type='button';del.onclick=async()=>{if(!confirm('Удалить организацию «'+o.name+'»? Её компьютеры останутся в базе без организации.'))return;try{await api('/api/organizations/'+o.id,jsonPost({},'DELETE'));await reloadData();$('org-message').textContent='Организация удалена, компьютеры сохранены.';}catch(e){$('org-message').textContent='Ошибка: '+e.message;}};row.append(name,edit,del);root.append(row);}}
+function renderSettings(){
+  const root=$('org-settings-list');clear(root);
+  if(!organizations.length){root.append(node('p','Организаций пока нет.','subtle py-3'));return;}
+  for(const o of organizations){
+    const row=node('div',undefined,'org-setting-row');const name=node('div',undefined,'org-setting-name');
+    name.append(node('strong',o.name),node('small',computerCount(assets.filter(a=>a.organization_id===o.id).length)));
+    const edit=node('button','Переименовать','btn btn-outline-secondary btn-sm');edit.type='button';edit.onclick=()=>openOrgModal('rename',o,edit);
+    const del=node('button','Удалить','btn btn-outline-danger btn-sm');del.type='button';del.onclick=()=>openOrgModal('delete',o,del);
+    row.append(name,edit,del);root.append(row);
+  }
+}
+let modalOrg=null, modalTrigger=null, modalBusy=false;
+function openOrgModal(kind,org,trigger){
+  modalOrg=org;modalTrigger=trigger;
+  if(kind==='rename'){$('rename-org-input').value=org.name;$('rename-org-error').textContent='';}
+  else {$('delete-org-name').textContent='«'+org.name+'»';$('delete-org-error').textContent='';}
+  bootstrap.Modal.getOrCreateInstance($(kind+'-org-modal')).show();
+}
+$('rename-org-modal').addEventListener('shown.bs.modal',()=>{$('rename-org-input').focus();$('rename-org-input').select();});
+for(const kind of ['rename','delete']){
+  const element=$(kind+'-org-modal');
+  element.addEventListener('hide.bs.modal',e=>{if(modalBusy)e.preventDefault();});
+  element.addEventListener('hidden.bs.modal',()=>{const target=modalTrigger?.isConnected?modalTrigger:$('org-name');target.focus();modalOrg=null;modalTrigger=null;});
+  $(kind+'-org-form').onsubmit=async e=>{
+    e.preventDefault();if(modalBusy||!modalOrg)return;
+    const error=$(kind+'-org-error'),button=$(kind+'-org-confirm');error.textContent='';
+    const name=$('rename-org-input').value.trim();if(kind==='rename'&&!name){error.textContent='Укажите название организации.';$('rename-org-input').focus();return;}
+    modalBusy=true;button.disabled=true;
+    try{
+      await api('/api/organizations/'+modalOrg.id,jsonPost(kind==='rename'?{name}:{},kind==='rename'?'PUT':'DELETE'));
+      await reloadData();$('org-message').textContent=kind==='rename'?'Название обновлено.':'Организация удалена, компьютеры сохранены.';
+      modalBusy=false;bootstrap.Modal.getInstance(element).hide();
+    }catch(err){error.textContent='Ошибка: '+err.message;}
+    finally{modalBusy=false;button.disabled=false;}
+  };
+}
 $('org-form').onsubmit=async e=>{e.preventDefault();try{await api('/api/organizations',jsonPost({name:$('org-name').value}));$('org-name').value='';await reloadData();$('org-message').textContent='Организация создана.';}catch(err){$('org-message').textContent='Ошибка: '+err.message;}};
 async function reloadData(){[organizations,assets]=await Promise.all([api('/api/organizations'),api('/api/assets')]);fillOrganizations();renderOverview();renderSettings();const target=$('target'),old=target.value;clear(target);target.append(new Option('— Выберите действие —',''),new Option('Новый компьютер','0'));for(const a of assets)target.append(new Option(a.name+' (ID '+a.id+', '+orgName(a.organization_id)+')',String(a.id)));target.value=old;if(currentPage==='organization')renderOrganization(activeOrg);}
 $('filter').onchange=()=>renderOrganization(activeOrg);
-for(const [button,menu] of [['org-toggle','org-nav'],['reports-toggle','reports-nav']]){ $(button).onclick=()=>{const el=$(menu);el.hidden=!el.hidden;$(button).setAttribute('aria-expanded',String(!el.hidden));}; $(menu).addEventListener('click',e=>{if(e.target.closest('a')){$(menu).hidden=true;$(button).setAttribute('aria-expanded','false');}}); }
+for(const [button,menu] of [['org-toggle','org-nav'],['reports-toggle','reports-nav']]){
+  $(button).onclick=()=>{const el=$(menu);el.hidden=!el.hidden;$(button).setAttribute('aria-expanded',String(!el.hidden));};
+}
 function dirty(){const a=assets.find(x=>x.id===selectedAsset);return currentPage==='asset'&&a&&(a.notes!==$('notes').value||a.status!==$('asset-status').value||String(a.organization_id)!==$('asset-org').value);}
 window.addEventListener('beforeunload',e=>{if(dirty()){e.preventDefault();e.returnValue='';}});
 async function openAsset(id){
@@ -118,12 +167,23 @@ async function runPreview(){const token=++previewSerial;$('import').disabled=tru
 $('target').onchange=()=>{const a=assets.find(x=>String(x.id)===$('target').value);$('import-status').value=a?.status||'in_use';$('import-org').value=String(a?.organization_id||0);$('import-notes').value=a?.notes||'';runPreview();};
 $('import').onclick=async()=>{const target=$('target').value,report=currentReport,file=selectedFile;if(!report||target==='')return;const details={notes:$('import-notes').value,status:$('import-status').value,organization_id:Number($('import-org').value)};$('import').disabled=true;try{const res=await api('/api/import',jsonPost({asset_id:Number(target),report,details}));if(!['new','changed'].includes(res.preview.status)){await runPreview();return;}await reloadData();if(currentReport!==report||selectedFile!==file){notify('Отчёт добавлен. Компьютер ID '+res.asset_id+'.','success');return;}selectedFile=null;currentReport=null;location.hash='#/asset/'+res.asset_id;notify('Отчёт добавлен в базу.','success');}catch(e){$('preview').className='alert alert-danger mt-3';$('preview').hidden=false;$('preview').textContent='Ошибка импорта: '+e.message;}};
 $('shutdown').onclick=async()=>{if(serverStopped||!confirm((dirty()?'Есть несохранённые изменения заметки или статуса.\n\n':'')+'Остановить GoRig Base? Чтобы продолжить работу, программу нужно будет запустить снова.'))return;try{await api('/api/shutdown',jsonPost({}));serverStopped=true;$('shutdown').disabled=true;document.querySelector('.server-badge').textContent='Сервер остановлен';notify('GoRig Base остановлен. Чтобы продолжить работу, запустите программу снова.','warning');}catch(e){notify('Не удалось остановить сервер: '+e.message);}};
-function route(){if(reverting){reverting=false;return;}const hash=location.hash||'#/overview';if(lastHash&&hash!==lastHash&&dirty()&&!confirm('Есть несохранённые изменения заметки, организации или статуса. Перейти без сохранения?')){reverting=true;location.hash=lastHash;return;}lastHash=hash;assetSerial++;previewSerial++;for(const [button,menu] of [['org-toggle','org-nav'],['reports-toggle','reports-nav']]){$(menu).hidden=true;$(button).setAttribute('aria-expanded','false');}
-  const parts=hash.replace(/^#\/?/,'').split('/');let page=parts[0];if(!['overview','organizations','asset','import','reports','settings'].includes(page))page='overview';
-  currentPage=page==='organizations'?'organization':page;document.querySelectorAll('.page').forEach(el=>{el.hidden=el.id!=='page-'+currentPage;});document.querySelectorAll('[data-nav]').forEach(el=>el.classList.toggle('active',el.dataset.nav===(page==='asset'?'organizations':page)));
-  const titles={overview:'Обзор',organizations:'Организации',asset:'Компьютер',import:'Импорт отчёта',reports:'Отчёты',settings:'Настройки'};$('breadcrumb').textContent=titles[page];
-  if(page==='overview')renderOverview();if(page==='settings')renderSettings();if(page==='organizations')renderOrganization(Number(parts[1])||0);
-  if(page==='asset'){ $('asset-report-slot').append($('report-panel'));openAsset(Number(parts[1])); }
+function route(){
+  if(reverting){reverting=false;return;}
+  const hash=location.hash||'#/overview';
+  if(lastHash&&hash!==lastHash&&dirty()&&!confirm('Есть несохранённые изменения заметки, организации или статуса. Перейти без сохранения?')){reverting=true;location.hash=lastHash;return;}
+  lastHash=hash;assetSerial++;previewSerial++;
+  const parts=hash.replace(/^#\/?/,'').split('/');let page=parts[0];
+  if(!['overview','organizations','asset','import','reports','settings'].includes(page))page='overview';
+  if(page==='organizations'&&parts[1]&&!/^\d+$/.test(parts[1])){notify('Организация не найдена.');location.hash='#/organizations';return;}
+  currentPage=page==='organizations'?(parts[1]?'organization':'organizations'):page;
+  document.querySelectorAll('.page').forEach(el=>{el.hidden=el.id!=='page-'+currentPage;});
+  document.querySelectorAll('[data-nav]').forEach(el=>el.classList.toggle('active',el.dataset.nav===(page==='asset'?'organizations':page)));
+  const titles={overview:'Обзор',organizations:'Организации',asset:'Компьютер',import:'Импорт отчёта',reports:'Отчёты',settings:'Настройки'};
+  highlightSubmenu();$('breadcrumb').textContent=titles[page];$('breadcrumbs').hidden=['overview','organizations','settings'].includes(page);$('top-import').hidden=page!=='overview';
+  if(page==='overview'||currentPage==='organizations')renderOverview();
+  if(page==='settings')renderSettings();
+  if(currentPage==='organization')renderOrganization(Number(parts[1]));
+  if(page==='asset'){$('asset-report-slot').append($('report-panel'));openAsset(Number(parts[1]));}
   if(page==='import'){selectedAsset=null;$('import-report-slot').append($('report-panel'));chooseFiles([]);$('file-error').textContent='';}
   window.scrollTo({top:0,behavior:'auto'});
 }
