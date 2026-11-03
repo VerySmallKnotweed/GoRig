@@ -104,6 +104,49 @@ func (s *server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		defer s.shutdown()
 		return
 	}
+	if r.URL.Path == "/api/organizations" {
+		switch r.Method {
+		case http.MethodGet:
+			out, err := s.store.Organizations()
+			respond(w, out, err)
+			return
+		case http.MethodPost:
+			var req struct {
+				Name string `json:"name"`
+			}
+			if !readJSON(w, r, &req) {
+				return
+			}
+			id, err := s.store.CreateOrganization(req.Name)
+			respond(w, map[string]int64{"id": id}, err)
+			return
+		}
+	}
+	if strings.HasPrefix(r.URL.Path, "/api/organizations/") {
+		id, err := strconv.ParseInt(strings.TrimPrefix(r.URL.Path, "/api/organizations/"), 10, 64)
+		if err != nil || id <= 0 {
+			http.Error(w, "неверный ID", http.StatusBadRequest)
+			return
+		}
+		switch r.Method {
+		case http.MethodPut:
+			var req struct {
+				Name string `json:"name"`
+			}
+			if !readJSON(w, r, &req) {
+				return
+			}
+			respond(w, map[string]bool{"ok": true}, s.store.RenameOrganization(id, req.Name))
+			return
+		case http.MethodDelete:
+			var req struct{}
+			if !readJSON(w, r, &req) {
+				return
+			}
+			respond(w, map[string]bool{"ok": true}, s.store.DeleteOrganization(id))
+			return
+		}
+	}
 	if r.URL.Path == "/api/assets" && r.Method == http.MethodGet {
 		assets, err := s.store.Assets()
 		respond(w, assets, err)
@@ -130,13 +173,14 @@ func (s *server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		case http.MethodPut:
 			var req struct {
-				Notes  string  `json:"notes"`
-				Status *string `json:"status"`
+				Notes          string  `json:"notes"`
+				Status         *string `json:"status"`
+				OrganizationID *int64  `json:"organization_id"`
 			}
 			if !readJSON(w, r, &req) {
 				return
 			}
-			respond(w, map[string]bool{"ok": true}, s.store.SaveDetails(id, req.Notes, req.Status))
+			respond(w, map[string]bool{"ok": true}, s.store.SaveAssetDetails(id, AssetDetails{Notes: req.Notes, Status: req.Status, OrganizationID: req.OrganizationID}))
 			return
 		}
 	}
@@ -144,6 +188,7 @@ func (s *server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		var req struct {
 			AssetID int64           `json:"asset_id"`
 			Report  json.RawMessage `json:"report"`
+			Details *AssetDetails   `json:"details"`
 		}
 		if !readJSON(w, r, &req) {
 			return
@@ -157,7 +202,7 @@ func (s *server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			respond(w, p, err)
 			return
 		}
-		p, id, err := s.store.Import(req.Report, req.AssetID)
+		p, id, err := s.store.ImportWithDetails(req.Report, req.AssetID, req.Details)
 		respond(w, struct {
 			Preview Preview `json:"preview"`
 			AssetID int64   `json:"asset_id"`

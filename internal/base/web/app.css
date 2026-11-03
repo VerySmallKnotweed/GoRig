@@ -198,3 +198,54 @@ button, input, select, textarea { font-family: inherit; }
   .app-footer { left: 0; }
 }
 @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+/* Multi-page workspace */
+.nav-toggle { width: 100%; border-top: 0; border-right: 0; border-bottom: 0; background: transparent; text-align: left; }
+.nav-chevron { margin-left: auto; font-size: 16px; }
+.nav-submenu { display: grid; gap: 1px; padding: 2px 10px 8px 49px; background: #192943; }
+.nav-submenu a { padding: 7px 0; color: #c8d3e1; font-size: 12px; text-decoration: none; overflow-wrap: anywhere; }
+.nav-submenu a:hover, .nav-submenu a:focus-visible { color: #70d0fa; }
+.section-title { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin: 10px 0 17px; }
+.section-title h2 { margin: 0; color: #fff; font-size: 18px; font-weight: 700; }
+.section-title p { margin: 5px 0 0; }
+.organization-grid, .pc-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(240px,1fr)); gap: 16px; }
+.organization-card, .pc-card { display: block; min-width: 0; padding: 20px; border: 1px solid #2a405f; border-radius: 4px; background: var(--surface); color: #eaf1f9; text-decoration: none; transition: border-color .15s, background .15s; }
+.organization-card:hover, .pc-card:hover { border-color: #4b789f; background: #203454; color: #fff; }
+.org-card-head, .pc-card-top, .pc-card-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.org-card-icon, .pc-icon { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 4px; background: #253f62; color: #81d4fa; font-size: 20px; }
+.org-card-link { color: #8fd6f8; font-size: 11px; }
+.organization-card h3, .pc-card h3 { margin: 17px 0 4px; color: #fff; font-size: 16px; font-weight: 700; overflow-wrap: anywhere; }
+.org-total { margin: 0 0 17px; color: #aabbd0; font-size: 12px; }
+.org-breakdown { display: flex; flex-wrap: wrap; gap: 6px 12px; padding-top: 13px; border-top: 1px solid #304563; color: #b5c5d6; font-size: 11px; }
+.org-breakdown b { color: #eef5fc; }
+.pc-card { border-top: 3px solid #647a94; }
+.pc-intel { border-top-color: #03a9f4; }
+.pc-amd { border-top-color: #ec6262; }
+.pc-amd .pc-icon { background: #583946; color: #ffaaaa; }
+.cpu-badge { padding: 5px 7px; border-radius: 3px; background: #293e5b; color: #b4c4d8; font-size: 10px; font-weight: 700; }
+.pc-intel .cpu-badge { background: #174772; color: #a8e4ff; }
+.pc-amd .cpu-badge { background: #623d49; color: #ffc2c1; }
+.pc-cpu { min-height: 36px; margin: 0 0 12px; color: #bac9d9; font-size: 12px; overflow-wrap: anywhere; }
+.pc-card-foot { padding-top: 12px; border-top: 1px solid #304563; color: #a8c9df; font-size: 11px; }
+.status-in_use { color: #69dbbd; }.status-reserve { color: #9bdcff; }.status-retired { color: #ff9c9b; }
+.org-form { display: flex; gap: 10px; max-width: 620px; }
+.org-form .form-control { min-width: 0; }
+.settings-list { margin-top: 18px; }
+.org-setting-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 13px 0; border-bottom: 1px solid var(--line); }
+.org-setting-name { flex: 1 1 180px; min-width: 0; overflow-wrap: anywhere; }
+.org-setting-name strong, .org-setting-name small { display: block; }.org-setting-name small { color: var(--muted); font-size: 11px; }
+.component-group { margin-top: 22px; }.component-group .detail-section-title { display: flex; align-items: center; padding-bottom: 8px; border-bottom: 1px solid var(--line); color: #e8f4fc; }
+.kv .key-value { color: #7ed9ff !important; font-weight: 700; }
+@media (max-width: 767px) {
+  .side-nav { gap: 0; }
+  .side-link { gap: 6px; padding-right: 7px; padding-left: 7px; }
+  .nav-chevron { margin-left: 2px; }
+  .nav-submenu { position: fixed; z-index: 40; top: 100px; left: 0; right: 0; max-height: min(55vh,400px); overflow: auto; padding: 12px 20px; border-top: 1px solid #304563; box-shadow: 0 10px 15px #0c172780; }
+  .nav-submenu a { padding: 9px 0; }
+  .section-title { align-items: flex-start; flex-direction: column; }
+  .organization-grid, .pc-grid { grid-template-columns: repeat(auto-fit,minmax(min(100%,240px),1fr)); }
+  .org-form { flex-direction: column; }
+}
+@media (max-width: 767px) {
+  .side-link { padding-left: 5px; padding-right: 5px; font-size: 10px; }
+  .nav-icon { width: 14px; }
+}

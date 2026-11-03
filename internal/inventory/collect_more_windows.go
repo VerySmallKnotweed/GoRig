@@ -3,6 +3,7 @@
 package inventory
 
 import (
+	"net"
 	"strings"
 	"time"
 
@@ -103,18 +104,24 @@ func collectNetworkAdapters() []report.Component {
 		return queryFailure("network", "WMI Win32_NetworkAdapter", err)
 	}
 	var components []report.Component
+	interfaces, _ := net.Interfaces()
+	ips := ipAddressesByMAC(interfaces, func(i net.Interface) ([]net.Addr, error) { return i.Addrs() })
 	for _, adapter := range adapters {
 		if !adapter.PhysicalAdapter {
 			continue
+		}
+		attributes := map[string]report.Value{
+			"mac_address":   wmiNormalizedMAC(adapter.MACAddress),
+			"pnp_device_id": wmiString(adapter.PNPDeviceID, "WMI Win32_NetworkAdapter.PNPDeviceID"),
+		}
+		if addresses := ips[strings.ToUpper(strings.TrimSpace(adapter.MACAddress))]; len(addresses) > 0 {
+			attributes["ip_addresses"] = wmiString(strings.Join(addresses, ", "), "net.Interface.Addrs")
 		}
 		components = append(components, report.Component{
 			Type: "network", Name: wmiString(adapter.Name, "WMI Win32_NetworkAdapter.Name"),
 			Manufacturer: wmiString(adapter.Manufacturer, "WMI Win32_NetworkAdapter.Manufacturer"),
 			Model:        report.Value{Status: "not_collected"}, SerialNumber: report.Value{Status: "not_collected"},
-			Attributes: map[string]report.Value{
-				"mac_address":   wmiNormalizedMAC(adapter.MACAddress),
-				"pnp_device_id": wmiString(adapter.PNPDeviceID, "WMI Win32_NetworkAdapter.PNPDeviceID"),
-			},
+			Attributes: attributes,
 		})
 	}
 	return components

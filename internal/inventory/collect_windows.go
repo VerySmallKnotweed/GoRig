@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os/exec"
 	"strings"
+	"syscall"
 
 	"GoRig/internal/report"
 
@@ -43,7 +44,9 @@ type biosWMI struct {
 }
 
 func collectOS() report.Value {
-	output, err := exec.Command("cmd.exe", "/d", "/c", "ver").Output()
+	cmd := exec.Command("cmd.exe", "/d", "/c", "ver")
+	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
+	output, err := cmd.Output()
 	if err != nil {
 		return report.Value{
 			Value:  "Windows",

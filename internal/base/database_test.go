@@ -240,7 +240,7 @@ INSERT INTO assets(id,name,notes) VALUES(7,'Old PC','keep this');`)
 	}
 	s := openTest(t, path)
 	assets, err := s.Assets()
-	if err != nil || len(assets) != 1 || assets[0].Status != "in_use" || assets[0].Notes != "keep this" {
+	if err != nil || len(assets) != 1 || assets[0].Status != "in_use" || assets[0].Notes != "keep this" || assets[0].OrganizationID != 0 {
 		t.Fatalf("migration: %+v %v", assets, err)
 	}
 	history, err := s.History(7)
@@ -391,5 +391,65 @@ func TestStaticAssetsAndShutdown(t *testing.T) {
 		if w.Code != tc.want || called != tc.calls {
 			t.Fatalf("shutdown: %d calls %d, want %d/%d", w.Code, called, tc.want, tc.calls)
 		}
+	}
+}
+
+func TestOrganizationsAndAtomicImport(t *testing.T) {
+	s := openTest(t, filepath.Join(t.TempDir(), "org.sqlite"))
+	defer s.Close()
+	id, err := s.CreateOrganization("  Школа  ")
+	if err != nil {
+		t.Fatal(err)
+	}
+	status := "reserve"
+	details := AssetDetails{Notes: "Кабинет 4", Status: &status, OrganizationID: &id}
+	p, asset, err := s.ImportWithDetails(raw(t, fixture("org-first", time.Now())), 0, &details)
+	if err != nil || p.Status != "new" {
+		t.Fatalf("import %v %+v", err, p)
+	}
+	all, err := s.Assets()
+	if err != nil || len(all) != 1 || all[0].OrganizationID != id || all[0].Notes != "Кабинет 4" || all[0].Status != "reserve" {
+		t.Fatalf("assets: %+v %v", all, err)
+	}
+	if err := s.RenameOrganization(id, "Гимназия"); err != nil {
+		t.Fatal(err)
+	}
+	orgs, err := s.Organizations()
+	if err != nil || len(orgs) != 1 || orgs[0].Name != "Гимназия" {
+		t.Fatalf("organizations: %+v %v", orgs, err)
+	}
+	if err := s.DeleteOrganization(id); err != nil {
+		t.Fatal(err)
+	}
+	all, err = s.Assets()
+	if err != nil || len(all) != 1 || all[0].OrganizationID != 0 || all[0].Notes != "Кабинет 4" {
+		t.Fatalf("delete organization: %+v %v", all, err)
+	}
+	hist, err := s.History(asset)
+	if err != nil || len(hist) != 1 {
+		t.Fatalf("lost history: %+v %v", hist, err)
+	}
+	invalid := int64(9999)
+	details.OrganizationID = &invalid
+	_, _, err = s.ImportWithDetails(raw(t, fixture("invalid-org", time.Now())), 0, &details)
+	if err == nil {
+		t.Fatal("missing org must fail")
+	}
+	all, err = s.Assets()
+	if err != nil || len(all) != 1 {
+		t.Fatalf("failed import not rolled back: %+v %v", all, err)
+	}
+	if _, err = s.CreateOrganization("  "); err == nil {
+		t.Fatal("empty name accepted")
+	}
+}
+
+func TestIPIsNotConfiguration(t *testing.T) {
+	a := fixture("ip", time.Now())
+	b := fixture("ip2", a.CollectedAt)
+	a.Device.Components = append(a.Device.Components, report.Component{Type: "network", Name: report.Value{Value: "Ethernet", Status: "collected"}, Attributes: map[string]report.Value{"ip_addresses": {Value: "192.168.0.1", Status: "collected"}}})
+	b.Device.Components = append(b.Device.Components, report.Component{Type: "network", Name: report.Value{Value: "Ethernet", Status: "collected"}, Attributes: map[string]report.Value{"ip_addresses": {Value: "192.168.0.2", Status: "collected"}}})
+	if d := compare(a, b); len(d) != 0 {
+		t.Fatalf("IP telemetry differs: %+v", d)
 	}
 }

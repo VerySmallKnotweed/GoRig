@@ -74,8 +74,8 @@ func summary(r report.Report) map[string]string {
 		}
 		sort.Strings(keys)
 		for _, k := range keys {
-			// Free disk space changes constantly; it is telemetry, not configuration.
-			if c.Type == "volume" && k == "free_bytes" {
+			// Free disk space and IP addresses are point-in-time telemetry, not hardware configuration.
+			if (c.Type == "volume" && k == "free_bytes") || (c.Type == "network" && k == "ip_addresses") {
 				continue
 			}
 			add(attributeLabel(k), value(c.Attributes[k]))
