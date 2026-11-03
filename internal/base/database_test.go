@@ -356,6 +356,9 @@ func TestStaticAssetsAndShutdown(t *testing.T) {
 		if w.Code != http.StatusOK || w.Body.Len() == 0 {
 			t.Fatalf("%s: %d", path, w.Code)
 		}
+		if path == "/" && (!strings.Contains(w.Body.String(), `data-bs-theme="light"`) || !strings.Contains(w.Body.String(), `Created by a <strong>StrangeFragment</strong> in 2©26`)) {
+			t.Fatal("dashboard theme or footer is missing")
+		}
 	}
 	for _, subset := range []string{"latin", "cyrillic"} {
 		for _, weight := range []string{"400", "500", "700"} {

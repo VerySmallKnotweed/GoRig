@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="ru" data-bs-theme="dark">
+<html lang="ru" data-bs-theme="light">
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>GoRig Base — учёт компьютеров</title>
@@ -11,12 +11,12 @@
     <a class="brand" href="#/overview" aria-label="GoRig Base — главная"><span class="brand-mark">G</span><span><strong>GoRig</strong><small>BASE / ИНВЕНТАРИЗАЦИЯ</small></span></a>
     <div class="nav-label">РАБОЧЕЕ ПРОСТРАНСТВО</div>
     <nav class="side-nav" aria-label="Навигация">
-      <a class="side-link" data-nav="overview" href="#/overview"><span class="nav-icon">▦</span> Обзор</a>
-      <button class="side-link nav-toggle" data-nav="organizations" id="org-toggle" type="button" aria-expanded="false" aria-controls="org-nav"><span class="nav-icon">▤</span> Организации <span class="nav-chevron">⌄</span></button>
+      <a class="side-link" data-nav="overview" href="#/overview"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></span> Обзор</a>
+      <button class="side-link nav-toggle" data-nav="organizations" id="org-toggle" type="button" aria-expanded="false" aria-controls="org-nav"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18M5 21V6l7-3 7 3v15M9 9h1m4 0h1M9 13h1m4 0h1M10 21v-4h4v4"/></svg></span> Организации <span class="nav-chevron">⌄</span></button>
       <div id="org-nav" class="nav-submenu" hidden></div>
-      <button class="side-link nav-toggle" data-nav="reports" id="reports-toggle" type="button" aria-expanded="false" aria-controls="reports-nav"><span class="nav-icon">▧</span> Отчёты <span class="nav-chevron">⌄</span></button>
+      <button class="side-link nav-toggle" data-nav="reports" id="reports-toggle" type="button" aria-expanded="false" aria-controls="reports-nav"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3h10l4 4v14H5zM15 3v4h4M8 16l3-3 2 2 3-4M8 9h4"/></svg></span> Отчёты <span class="nav-chevron">⌄</span></button>
       <div id="reports-nav" class="nav-submenu" hidden><a href="#/reports">Аналитические отчёты</a></div>
-      <a class="side-link" data-nav="settings" href="#/settings"><span class="nav-icon">⚙</span> Настройки</a>
+      <a class="side-link" data-nav="settings" href="#/settings"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M4.93 4.93l1.41 1.41m11.32 11.32 1.41 1.41m0-14.14-1.41 1.41M6.34 17.66l-1.41 1.41"/></svg></span> Настройки</a>
     </nav>
     <div class="sidebar-bottom"><span class="live-dot"></span><span><strong>Локальная база</strong><small>Данные на этом компьютере</small></span></div>
   </aside>
@@ -27,10 +27,10 @@
       <section id="page-overview" class="page">
         <div class="page-heading"><div><div class="eyebrow">ПАНЕЛЬ УПРАВЛЕНИЯ</div><h1>Обзор оборудования</h1><p>Весь парк оборудования в одном месте.</p></div><a href="#/import" class="btn btn-primary main-action"><span>+</span> Импортировать отчёт</a></div>
         <div class="row g-3 stats-row" aria-label="Статистика компьютеров">
-          <div class="col-6 col-xl-3"><div class="stat-card stat-purple"><div class="stat-top"><span>Всего</span><span class="stat-icon">▣</span></div><strong id="stat-all">0</strong><small>Компьютеров</small><div class="stat-track" aria-hidden="true"><span id="stat-bar-all"></span></div></div></div>
-          <div class="col-6 col-xl-3"><div class="stat-card stat-green"><div class="stat-top"><span>В работе</span><span class="stat-icon green">●</span></div><strong id="stat-in_use">0</strong><small>Используются сейчас</small><div class="stat-track" aria-hidden="true"><span id="stat-bar-in_use"></span></div></div></div>
-          <div class="col-6 col-xl-3"><div class="stat-card stat-amber"><div class="stat-top"><span>В резерве</span><span class="stat-icon">◷</span></div><strong id="stat-reserve">0</strong><small>На хранении</small><div class="stat-track" aria-hidden="true"><span id="stat-bar-reserve"></span></div></div></div>
-          <div class="col-6 col-xl-3"><div class="stat-card stat-gray"><div class="stat-top"><span>Выбыли</span><span class="stat-icon">↗</span></div><strong id="stat-retired">0</strong><small>История сохранена</small><div class="stat-track" aria-hidden="true"><span id="stat-bar-retired"></span></div></div></div>
+          <div class="col-6 col-xl-3"><div class="stat-card stat-purple"><div class="stat-top"><span>Всего</span><span class="stat-icon" aria-hidden="true"><svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="4" stroke-linejoin="round"><rect x="7" y="9" width="50" height="35" rx="4"/><path d="M24 54h16M32 44v10"/></svg></span></div><strong id="stat-all">0</strong><small>Компьютеров</small><div class="stat-track" aria-hidden="true"><span id="stat-bar-all"></span></div></div></div>
+          <div class="col-6 col-xl-3"><div class="stat-card stat-green"><div class="stat-top"><span>В работе</span><span class="stat-icon" aria-hidden="true"><svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><circle cx="32" cy="32" r="24"/><path d="m20 32 8 8 16-17"/></svg></span></div><strong id="stat-in_use">0</strong><small>Используются сейчас</small><div class="stat-track" aria-hidden="true"><span id="stat-bar-in_use"></span></div></div></div>
+          <div class="col-6 col-xl-3"><div class="stat-card stat-amber"><div class="stat-top"><span>В резерве</span><span class="stat-icon" aria-hidden="true"><svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><circle cx="32" cy="32" r="24"/><path d="M32 17v16l11 7"/></svg></span></div><strong id="stat-reserve">0</strong><small>На хранении</small><div class="stat-track" aria-hidden="true"><span id="stat-bar-reserve"></span></div></div></div>
+          <div class="col-6 col-xl-3"><div class="stat-card stat-gray"><div class="stat-top"><span>Выбыли</span><span class="stat-icon" aria-hidden="true"><svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><circle cx="32" cy="32" r="24"/><path d="M22 32h20"/></svg></span></div><strong id="stat-retired">0</strong><small>История сохранена</small><div class="stat-track" aria-hidden="true"><span id="stat-bar-retired"></span></div></div></div>
         </div>
         <div class="section-title"><div><div class="eyebrow">ОБЗОР ПАРКА</div><h2>Организации</h2><p class="subtle">Состав и состояния компьютеров в каждой организации.</p></div><a href="#/settings" class="btn btn-outline-secondary btn-sm">Управление организациями</a></div>
         <div id="organization-cards" class="organization-grid"></div>
