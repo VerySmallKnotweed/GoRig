@@ -190,11 +190,13 @@ func (s *server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				Notes          string  `json:"notes"`
 				Status         *string `json:"status"`
 				OrganizationID *int64  `json:"organization_id"`
+				Identification *string `json:"identification"`
+				DeviceType     *string `json:"device_type"`
 			}
 			if !readJSON(w, r, &req) {
 				return
 			}
-			respond(w, map[string]bool{"ok": true}, s.store.SaveAssetDetails(id, AssetDetails{Notes: req.Notes, Status: req.Status, OrganizationID: req.OrganizationID}))
+			respond(w, map[string]bool{"ok": true}, s.store.SaveAssetDetails(id, AssetDetails{Notes: req.Notes, Status: req.Status, OrganizationID: req.OrganizationID, Identification: req.Identification, DeviceType: req.DeviceType}))
 			return
 		}
 	}

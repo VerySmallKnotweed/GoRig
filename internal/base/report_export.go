@@ -17,6 +17,8 @@ type PrintableAsset struct {
 	ID             int64           `json:"id"`
 	Name           string          `json:"name"`
 	Notes          string          `json:"notes"`
+	Identification string          `json:"identification"`
+	DeviceType     string          `json:"device_type"`
 	Status         string          `json:"status"`
 	OrganizationID int64           `json:"organization_id"`
 	Report         json.RawMessage `json:"report"`
@@ -59,7 +61,7 @@ func (s *Store) PrintableSnapshot(scope int64) (PrintableReport, error) {
 	if scope <= 0 {
 		out.Organizations = append(out.Organizations, Organization{ID: 0, Name: "Непривязанные"})
 	}
-	rows, err = tx.Query(`SELECT a.id,a.name,a.notes,a.status,COALESCE(a.organization_id,0),
+	rows, err = tx.Query(`SELECT a.id,a.name,a.notes,a.identification,a.device_type,a.status,COALESCE(a.organization_id,0),
 		COALESCE((SELECT report_json FROM inspections WHERE asset_id=a.id ORDER BY id DESC LIMIT 1),'null')
 		FROM assets a WHERE ?=-1 OR COALESCE(a.organization_id,0)=? ORDER BY a.name,a.id`, scope, scope)
 	if err != nil {
@@ -68,7 +70,7 @@ func (s *Store) PrintableSnapshot(scope int64) (PrintableReport, error) {
 	for rows.Next() {
 		var a PrintableAsset
 		var raw string
-		if err = rows.Scan(&a.ID, &a.Name, &a.Notes, &a.Status, &a.OrganizationID, &raw); err != nil {
+		if err = rows.Scan(&a.ID, &a.Name, &a.Notes, &a.Identification, &a.DeviceType, &a.Status, &a.OrganizationID, &raw); err != nil {
 			rows.Close()
 			return out, err
 		}

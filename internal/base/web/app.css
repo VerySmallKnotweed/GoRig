@@ -366,3 +366,48 @@ body { background: #f5f7fa; }
 }
 .org-metric { display: grid; place-items: center; width: 100%; max-width: 50px; aspect-ratio: 1; padding: 0; }
 .report-org-button { max-width: 100%; white-space: normal; }
+
+/* Shared controls and the deliberately prominent shutdown action. */
+button, .btn, .filebutton, .history-btn, .asset, .nav-toggle { border-radius: 8px; }
+.exit-btn, .exit-btn:focus { border-color: #dc3545; background: #dc3545; color: #fff; }
+.exit-btn:hover, .exit-btn:focus-visible { border-color: #b02a37; background: #bb2d3b; color: #fff; }
+.brand strong { white-space: nowrap; font-size: 19px; }
+.pc-icon svg { width: 23px; height: 23px; }
+.pc-cpu { min-height: 0; margin-bottom: 8px; }
+.pc-identification { margin: 0 0 12px; color: #374c60; font-size: 12px; font-weight: 600; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.pc-card-foot { margin-top: 12px; font-size: 12px; }
+#asset-page-identification { white-space: normal; overflow-wrap: anywhere; }
+
+/* The accounting panel and inventory report both occupy the available width. */
+.asset-notes { padding: 0; overflow: hidden; }
+.asset-notes-summary { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 18px 22px; cursor: pointer; color: #212529; font-size: 17px; font-weight: 700; list-style: none; }
+.asset-notes-summary::-webkit-details-marker, .history-section summary::-webkit-details-marker { display: none; }
+.notes-chevron { color: #6c757d; font-size: 21px; transition: transform .15s; }
+.asset-notes[open] .notes-chevron { transform: rotate(180deg); }
+.asset-notes-body { padding: 20px 22px 22px; border-top: 1px solid var(--line); }
+.asset-fields { display: grid; grid-template-columns: repeat(auto-fit,minmax(min(100%,220px),1fr)); gap: 16px; }
+.asset-fields .hint { margin-top: 5px; }
+.asset-report .report-surface { padding: 24px; }
+.asset-report .surface-head h2 { font-size: 19px; font-weight: 700; }
+.asset-report .spec-list { display: grid; grid-template-columns: repeat(auto-fit,minmax(min(100%,240px),1fr)); gap: 10px; padding-top: 16px; }
+.asset-report .spec-row { display: flex; flex-direction: column; gap: 5px; min-width: 0; padding: 14px; border: 1px solid #dfe7f0; border-radius: 8px; background: #f8fafc; font-size: 13px; }
+.asset-report .spec-value { font-size: 14px; }
+.asset-report #device, .asset-report .component-group { margin-top: 20px; padding: 18px; border: 1px solid #dbe4ef; border-radius: 9px; background: #f7f9fc; }
+.asset-report #device .detail-section-title, .asset-report .component-group .detail-section-title { margin: 0 0 14px; padding: 0 0 10px; border-bottom: 1px solid #dce5ef; color: #174d80; font-size: 16px; }
+.asset-report .detail-grid { grid-template-columns: repeat(auto-fit,minmax(min(100%,270px),1fr)); gap: 12px; }
+.asset-report .detail-card { padding: 15px; border-radius: 8px; }
+.asset-report .detail-card strong { color: #26394c; font-size: 14px; overflow-wrap: anywhere; }
+.asset-report .kv { grid-template-columns: minmax(100px,32%) minmax(0,1fr); gap: 8px 14px; font-size: 13px; line-height: 1.5; }
+.asset-report .kv span { min-width: 0; }
+.history-section summary { cursor: pointer; font-size: 15px; font-weight: 700; }
+.stopped-screen { min-height: 100vh; display: grid; place-items: center; padding: 24px; }
+.stopped-card { max-width: 500px; padding: 38px; border: 1px solid #dfe5ec; border-radius: 12px; background: #fff; box-shadow: var(--card-shadow); text-align: center; }
+.stopped-symbol { display: grid; place-items: center; width: 52px; height: 52px; margin: 0 auto 18px; border-radius: 50%; background: #e7f4ed; color: #198754; font-size: 26px; }
+.stopped-card h1 { margin: 0 0 12px; font-size: 23px; }
+.stopped-card p { margin: 6px 0; color: #6c757d; }
+@media (max-width: 767px) {
+  .brand strong { font-size: 17px; }
+  .asset-report .report-surface, .asset-notes-body { padding: 16px; }
+  .asset-report #device, .asset-report .component-group { padding: 14px; }
+  .asset-report .kv { grid-template-columns: minmax(90px,38%) minmax(0,1fr); }
+}

@@ -8,6 +8,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unicode/utf8"
 
 	"GoRig/internal/report"
 	_ "github.com/ncruces/go-sqlite3/driver"
@@ -23,6 +24,8 @@ type Asset struct {
 	ID             int64  `json:"id"`
 	Name           string `json:"name"`
 	Notes          string `json:"notes"`
+	Identification string `json:"identification"`
+	DeviceType     string `json:"device_type"`
 	Status         string `json:"status"`
 	LatestAt       string `json:"latest_at"`
 	Count          int    `json:"count"`
@@ -67,7 +70,7 @@ CREATE INDEX IF NOT EXISTS inspections_asset ON inspections(asset_id, id);`)
 		db.Close()
 		return nil, err
 	}
-	hasStatus, hasOrganization := false, false
+	hasStatus, hasOrganization, hasIdentification, hasDeviceType := false, false, false, false
 	for rows.Next() {
 		var cid, notNull, primaryKey int
 		var name, typ string
@@ -82,6 +85,12 @@ CREATE INDEX IF NOT EXISTS inspections_asset ON inspections(asset_id, id);`)
 		}
 		if name == "organization_id" {
 			hasOrganization = true
+		}
+		if name == "identification" {
+			hasIdentification = true
+		}
+		if name == "device_type" {
+			hasDeviceType = true
 		}
 	}
 	if err := rows.Err(); err != nil {
@@ -105,6 +114,18 @@ CREATE INDEX IF NOT EXISTS inspections_asset ON inspections(asset_id, id);`)
 			return nil, err
 		}
 	}
+	if !hasIdentification {
+		if _, err := db.Exec("ALTER TABLE assets ADD COLUMN identification TEXT NOT NULL DEFAULT ''"); err != nil {
+			db.Close()
+			return nil, err
+		}
+	}
+	if !hasDeviceType {
+		if _, err := db.Exec("ALTER TABLE assets ADD COLUMN device_type TEXT NOT NULL DEFAULT ''"); err != nil {
+			db.Close()
+			return nil, err
+		}
+	}
 	// Never reuse a deleted asset ID: a stale browser tab must not accidentally
 	// edit or delete a different card created afterwards.
 	if _, err := db.Exec(`CREATE TABLE IF NOT EXISTS asset_sequence (id INTEGER PRIMARY KEY CHECK (id=1), last_id INTEGER NOT NULL);
@@ -118,7 +139,7 @@ ON CONFLICT(id) DO UPDATE SET last_id=MAX(last_id,excluded.last_id);`); err != n
 func (s *Store) Close() error { return s.db.Close() }
 
 func (s *Store) Assets() ([]Asset, error) {
-	rows, err := s.db.Query(`SELECT a.id, a.name, a.notes, a.status, COALESCE((SELECT collected_at FROM inspections WHERE asset_id=a.id ORDER BY id DESC LIMIT 1),''), (SELECT COUNT(*) FROM inspections WHERE asset_id=a.id), COALESCE(a.organization_id,0), COALESCE((SELECT report_json FROM inspections WHERE asset_id=a.id ORDER BY id DESC LIMIT 1),'') FROM assets a ORDER BY a.name, a.id`)
+	rows, err := s.db.Query(`SELECT a.id, a.name, a.notes, a.identification, a.device_type, a.status, COALESCE((SELECT collected_at FROM inspections WHERE asset_id=a.id ORDER BY id DESC LIMIT 1),''), (SELECT COUNT(*) FROM inspections WHERE asset_id=a.id), COALESCE(a.organization_id,0), COALESCE((SELECT report_json FROM inspections WHERE asset_id=a.id ORDER BY id DESC LIMIT 1),'') FROM assets a ORDER BY a.name, a.id`)
 	if err != nil {
 		return nil, err
 	}
@@ -127,7 +148,7 @@ func (s *Store) Assets() ([]Asset, error) {
 	for rows.Next() {
 		var a Asset
 		var raw string
-		if err := rows.Scan(&a.ID, &a.Name, &a.Notes, &a.Status, &a.LatestAt, &a.Count, &a.OrganizationID, &raw); err != nil {
+		if err := rows.Scan(&a.ID, &a.Name, &a.Notes, &a.Identification, &a.DeviceType, &a.Status, &a.LatestAt, &a.Count, &a.OrganizationID, &raw); err != nil {
 			return nil, err
 		}
 		if raw != "" {
@@ -182,8 +203,10 @@ func (s *Store) SaveNotes(id int64, notes string) error {
 }
 
 type AssetDetails struct {
-	Notes  string  `json:"notes"`
-	Status *string `json:"status"`
+	Notes          string  `json:"notes"`
+	Status         *string `json:"status"`
+	Identification *string `json:"identification"`
+	DeviceType     *string `json:"device_type"`
 	// Nil preserves the existing association; zero explicitly clears it.
 	OrganizationID *int64 `json:"organization_id"`
 }
@@ -191,6 +214,12 @@ type AssetDetails struct {
 func validateDetails(d AssetDetails) error {
 	if len(d.Notes) > 100000 {
 		return errors.New("заметка слишком большая")
+	}
+	if d.Identification != nil && utf8.RuneCountInString(*d.Identification) > 80 {
+		return errors.New("идентификация не должна превышать 80 символов")
+	}
+	if d.DeviceType != nil && *d.DeviceType != "" && *d.DeviceType != "laptop" && *d.DeviceType != "desktop" && *d.DeviceType != "all_in_one" && *d.DeviceType != "other" {
+		return errors.New("неверный тип устройства")
 	}
 	if d.Status != nil && *d.Status != "in_use" && *d.Status != "reserve" && *d.Status != "retired" {
 		return errors.New("неверный статус компьютера")
@@ -209,14 +238,20 @@ func saveDetails(q executor, id int64, d AssetDetails) error {
 	if err := validateDetails(d); err != nil {
 		return err
 	}
-	var status, org any
+	var status, org, identification, deviceType any
 	if d.Status != nil {
 		status = *d.Status
 	}
 	if d.OrganizationID != nil {
 		org = *d.OrganizationID
 	}
-	res, err := q.Exec(`UPDATE assets SET notes=?, status=COALESCE(?,status), organization_id=CASE WHEN ? IS NULL THEN organization_id WHEN ?=0 THEN NULL ELSE ? END WHERE id=?`, d.Notes, status, org, org, org, id)
+	if d.Identification != nil {
+		identification = strings.TrimSpace(*d.Identification)
+	}
+	if d.DeviceType != nil {
+		deviceType = *d.DeviceType
+	}
+	res, err := q.Exec(`UPDATE assets SET notes=?, status=COALESCE(?,status), organization_id=CASE WHEN ? IS NULL THEN organization_id WHEN ?=0 THEN NULL ELSE ? END, identification=COALESCE(?,identification), device_type=COALESCE(?,device_type) WHERE id=?`, d.Notes, status, org, org, org, identification, deviceType, id)
 	if err != nil {
 		return err
 	}

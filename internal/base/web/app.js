@@ -8,8 +8,10 @@ const assetStatuses = {in_use:'В работе',reserve:'В резерве',reti
 const byteKeys = new Set(['capacity_bytes','free_bytes','total_memory_bytes','installed_memory_bytes','video_memory_bytes']);
 function node(tag, text, cls){ const n=document.createElement(tag); if(text!==undefined)n.textContent=text; if(cls)n.className=cls; return n; }
 function clear(el){ el.replaceChildren(); }
-function itemValue(x){ return !!(x && ['collected','template'].includes(x.status) && String(x.value ?? '').trim()); }
-function v(x){ if(x && x.status==='not_collected')return 'Не собиралось'; if(x && x.status==='error')return 'Ошибка сбора'; if(!itemValue(x))return 'Нет данных'; return String(x.value).trim()+(x.status==='template'?' (шаблон)':''); }
+function displayName(text){return String(text||'').trim().toLowerCase()==='default string'?'N/A':text;}
+function isTemplate(x){return !!x&&(x.status==='template'||String(x.value??'').trim().toLowerCase()==='default string');}
+function itemValue(x){ return !!(x && x.status==='collected' && !isTemplate(x) && String(x.value ?? '').trim()); }
+function v(x){ if(isTemplate(x))return 'N/A'; if(x && x.status==='not_collected')return 'Не собиралось'; if(x && x.status==='error')return 'Ошибка сбора'; if(!itemValue(x))return 'Нет данных'; return String(x.value).trim(); }
 function bytes(n){ const value=Number(n); if(!Number.isSafeInteger(value)||value<0)return String(n)+' байт'; if(value>=1073741824)return (value/1073741824).toLocaleString('ru-RU',{maximumFractionDigits:2})+' ГиБ'; if(value>=1048576)return (value/1048576).toLocaleString('ru-RU',{maximumFractionDigits:2})+' МиБ'; return value.toLocaleString('ru-RU')+' байт'; }
 function formatted(x,key){ return byteKeys.has(key)&&itemValue(x)&&/^\d+$/.test(String(x.value))?bytes(x.value):v(x); }
 function when(s){ const d=new Date(s); return Number.isNaN(d.valueOf())?String(s||'—'):d.toLocaleString('ru-RU'); }
@@ -43,7 +45,7 @@ function showReport(r,origin,canImport){
   spec(overview,'Дата установки Windows',v(at.windows_install_date)); spec(overview,'Перо и сенсорный ввод',v(at.touch_support));
   const problems=warnings(r);$('quality').hidden=!problems.length;$('quality').textContent='Неполный сбор: '+problems.join('; ')+'. Подробности — в исходных данных.';
   clear($('device'));$('device').append(node('h3','Компьютер и Windows','detail-section-title'));
-  const entries=[['Имя',v(d.computer_name)],['Производитель',v(d.manufacturer)],['Модель',v(d.model)],['Серийный номер',v(d.serial_number)],['ОС',v(d.os)+(d.os?.raw&&itemValue(d.os)?' — '+d.os.raw:'')],...Object.entries(at).map(([k,x])=>[attrs[k]||k,formatted(x,k)])];kv($('device'),entries);
+  const entries=[['Имя',v(d.computer_name)],['Производитель',v(d.manufacturer)],['Модель',v(d.model)],['Серийный номер',v(d.serial_number)],['ОС',v(d.os)+(d.os?.raw&&itemValue(d.os)&&String(d.os.raw).trim().toLowerCase()!=='default string'?' — '+d.os.raw:'')],...Object.entries(at).map(([k,x])=>[attrs[k]||k,formatted(x,k)])];kv($('device'),entries);
   clear($('components'));
   const icons={processor:'▦',memory:'▤',disk:'◉',volume:'▣',video:'▧',network:'⌁',motherboard:'▦',bios:'◈',monitor:'▣',keyboard:'⌨',mouse:'◉',printer:'▤'};
   const order=['processor','memory','disk','volume','video','network','motherboard','bios','monitor','keyboard','mouse','printer'];
@@ -95,14 +97,17 @@ function renderOverview(){
     }
   }
 }
+const deviceTypes={laptop:'Ноутбук',desktop:'Компьютер',all_in_one:'Моноблок',other:'Другое','':'Тип не указан'};
+const devicePaths={laptop:'M4 4h16v11H4z M2 19h20 M4 15l-2 4m18-4 2 4',desktop:'M3 4h13v11H3z M9.5 15v4m-4 0h8 M19 4h3v15h-3z M20.5 7h.01',all_in_one:'M3 4h18v12H3z M12 16v3m-4 0h8',other:'M12 3 21 8v8l-9 5-9-5V8z M3 8l9 5 9-5 M12 13v8','':'M4 4h16v12H4z M12 16v3m-4 0h8'};
+function deviceIcon(type){const span=node('span',undefined,'pc-icon'),ns='http://www.w3.org/2000/svg',svg=document.createElementNS(ns,'svg'),path=document.createElementNS(ns,'path');svg.setAttribute('viewBox','0 0 24 24');svg.setAttribute('fill','none');svg.setAttribute('stroke','currentColor');svg.setAttribute('stroke-width','1.7');svg.setAttribute('stroke-linecap','round');svg.setAttribute('stroke-linejoin','round');svg.setAttribute('aria-hidden','true');path.setAttribute('d',devicePaths[type]||devicePaths['']);svg.append(path);span.append(svg);span.title=deviceTypes[type]||deviceTypes[''];span.setAttribute('role','img');span.setAttribute('aria-label',span.title);return span;}
 function renderOrganization(id){
   activeOrg=id;const org=organizations.find(x=>x.id===id);if(id&&!org){notify('Организация не найдена.');location.hash='#/overview';return;}
   $('org-title').textContent=orgName(id);const members=assets.filter(a=>a.organization_id===id);$('org-subtitle').textContent=computerCount(members.length);
   const shown=members.filter(a=>$('filter').value==='all'||a.status===$('filter').value);$('org-count').textContent=shown.length+' / '+members.length;
   const root=$('asset-list');clear(root);if(!shown.length){root.append(node('div','В этой категории пока нет компьютеров.','surface subtle'));return;}
-  for(const a of shown){const card=node('a',undefined,'pc-card pc-state-'+a.status+' '+(a.cpu_vendor==='intel'?'pc-intel':a.cpu_vendor==='amd'?'pc-amd':'pc-unknown'));card.href='#/asset/'+a.id;card.setAttribute('aria-label',a.name+' — '+(assetStatuses[a.status]||a.status)+'. Подробнее');card.title=assetStatuses[a.status]||a.status;
-    const top=node('div',undefined,'pc-card-top');top.append(node('span','▣','pc-icon'),node('span',a.cpu_vendor==='intel'?'INTEL':a.cpu_vendor==='amd'?'AMD':'ПРОЦЕССОР НЕ ОПРЕДЕЛЁН','cpu-badge'));card.append(top,node('h3',a.name),node('p',a.cpu||'Процессор: нет данных','pc-cpu'));
-    const foot=node('div',undefined,'pc-card-foot');foot.append(node('span','ПОДРОБНЕЕ →'));card.append(foot);root.append(card);
+  for(const a of shown){const card=node('a',undefined,'pc-card pc-state-'+a.status+' '+(a.cpu_vendor==='intel'?'pc-intel':a.cpu_vendor==='amd'?'pc-amd':'pc-unknown'));card.href='#/asset/'+a.id;card.setAttribute('aria-label',displayName(a.name)+(a.identification?', '+a.identification:'')+', '+(deviceTypes[a.device_type]||deviceTypes[''])+' — '+(assetStatuses[a.status]||a.status)+'. Подробнее');card.title=assetStatuses[a.status]||a.status;
+    const top=node('div',undefined,'pc-card-top');top.append(deviceIcon(a.device_type||''),node('span',a.cpu_vendor==='intel'?'INTEL':a.cpu_vendor==='amd'?'AMD':'ПРОЦЕССОР НЕ ОПРЕДЕЛЁН','cpu-badge'));card.append(top,node('h3',displayName(a.name)),node('p',a.cpu?displayName(a.cpu):'Процессор: нет данных','pc-cpu'));if(a.identification){const tag=node('p',a.identification,'pc-identification');tag.title=a.identification;card.append(tag);}
+    const foot=node('div',undefined,'pc-card-foot');foot.append(node('span','ПОДРОБНЕЕ'));card.append(foot);root.append(card);
   }
 }
 function renderSettings(){
@@ -147,26 +152,39 @@ $('filter').onchange=()=>renderOrganization(activeOrg);
 for(const [button,menu] of [['org-toggle','org-nav'],['reports-toggle','reports-nav']]){
   $(button).onclick=()=>{const el=$(menu);el.hidden=!el.hidden;$(button).setAttribute('aria-expanded',String(!el.hidden));};
 }
-function dirty(){const a=assets.find(x=>x.id===selectedAsset);return currentPage==='asset'&&a&&(a.notes!==$('notes').value||a.status!==$('asset-status').value||String(a.organization_id)!==$('asset-org').value);}
+function dirty(){const a=assets.find(x=>x.id===selectedAsset);return !serverStopped&&currentPage==='asset'&&a&&(a.notes!==$('notes').value||a.identification!==$('asset-identification').value||a.device_type!==$('asset-device-type').value||a.status!==$('asset-status').value||String(a.organization_id)!==$('asset-org').value);}
 window.addEventListener('beforeunload',e=>{if(dirty()){e.preventDefault();e.returnValue='';}});
+function setAssetIdentification(text){$('asset-page-identification').textContent=text;$('asset-page-identification').hidden=!text;}
 async function openAsset(id){
   const token=++assetSerial;const a=assets.find(x=>x.id===id);if(!a){notify('Компьютер не найден.');location.hash='#/overview';return;}
-  selectedAsset=id;$('asset-page-title').textContent=a.name;$('notes').value=a.notes;$('asset-status').value=a.status;$('asset-org').value=String(a.organization_id);$('notes-status').textContent='';$('back-org').href='#/organizations/'+a.organization_id;
+  selectedAsset=id;$('asset-page-title').textContent=displayName(a.name);setAssetIdentification(a.identification);$('asset-identification').value=a.identification;$('asset-device-type').value=a.device_type;$('asset-detail').open=false;$('notes').value=a.notes;$('asset-status').value=a.status;$('asset-org').value=String(a.organization_id);$('notes-status').textContent='';$('back-org').href='#/organizations/'+a.organization_id;
   $('empty-report').hidden=false;$('report-content').hidden=true;$('report-origin').hidden=true;clear($('history'));
   try{const hist=await api('/api/assets/'+id);if(token!==assetSerial||currentPage!=='asset')return;if(!hist.length)$('history').append(node('p','История пуста.','subtle'));for(const h of hist){const b=node('button',when(h.collected_at),'history-btn');b.type='button';b.title='Импортирован: '+when(h.imported_at);b.onclick=()=>showReport(h.report,'Из базы',false);$('history').append(b);}if(hist.length)showReport(hist[0].report,'Из базы',false);}catch(e){notify('Не удалось открыть компьютер: '+e.message);}
 }
-$('save-notes').onclick=async()=>{const id=selectedAsset;if(id===null)return;try{await api('/api/assets/'+id,jsonPost({notes:$('notes').value,status:$('asset-status').value,organization_id:Number($('asset-org').value)},'PUT'));await reloadData();if(selectedAsset===id){$('notes-status').textContent='Сохранено';$('back-org').href='#/organizations/'+$('asset-org').value;}}catch(e){$('notes-status').textContent='Ошибка: '+e.message;}};
+$('save-notes').onclick=async()=>{
+  const id=selectedAsset;if(id===null||$('save-notes').disabled)return;
+  const details={notes:$('notes').value,status:$('asset-status').value,organization_id:Number($('asset-org').value),identification:$('asset-identification').value,device_type:$('asset-device-type').value};
+  $('save-notes').disabled=true;
+  try{await api('/api/assets/'+id,jsonPost(details,'PUT'));await reloadData();if(selectedAsset===id){const updated=assets.find(a=>a.id===id);if(updated){setAssetIdentification(updated.identification);if($('report-origin').textContent==='Из базы')$('device-state').textContent=assetStatuses[updated.status]||updated.status;if($('asset-identification').value===details.identification)$('asset-identification').value=updated.identification;$('back-org').href='#/organizations/'+updated.organization_id;}$('notes-status').textContent=dirty()?'Сохранено; есть новые несохранённые изменения.':'Сохранено';}}
+  catch(e){$('notes-status').textContent='Ошибка: '+e.message;}finally{$('save-notes').disabled=false;}
+};
 $('delete-asset').onclick=async()=>{const a=assets.find(x=>x.id===selectedAsset);if(!a||!confirm('Удалить компьютер «'+a.name+'» и всю историю обследований? Это нельзя отменить. Для списания без удаления выберите статус «Выбыл».'))return;try{await api('/api/assets/'+a.id,jsonPost({},'DELETE'));selectedAsset=null;await reloadData();location.hash='#/organizations/'+a.organization_id;}catch(e){$('notes-status').textContent='Ошибка удаления: '+e.message;}};
 function chooseFiles(list){files=[...list].filter(f=>f.name.toLowerCase().endsWith('.json')).sort((a,b)=>(a.webkitRelativePath||a.name).localeCompare(b.webkitRelativePath||b.name));selectedFile=null;currentReport=null;previewSerial++;$('empty-report').hidden=false;$('report-content').hidden=true;$('report-origin').hidden=true;$('import-panel').hidden=true;$('file-error').textContent=files.length?'':'JSON-файлы не найдены.';renderFiles();}
 $('file-input').onchange=e=>{chooseFiles(e.target.files);e.target.value='';};$('folder-input').onchange=e=>{chooseFiles(e.target.files);e.target.value='';};
 function renderFiles(){clear($('files'));for(const f of files){const b=node('button',f.webkitRelativePath||f.name,'asset file'+(f===selectedFile?' active':''));b.type='button';b.onclick=()=>openFile(f);$('files').append(b);}}
 async function openFile(f){selectedFile=f;currentReport=null;previewSerial++;renderFiles();$('file-error').textContent='';$('empty-report').hidden=false;$('report-content').hidden=true;$('report-origin').hidden=true;$('import-panel').hidden=true;
-  try{if(f.size>7*1024*1024)throw new Error('Файл больше 7 МБ');const r=JSON.parse(await f.text());if(f!==selectedFile)return;if(!r||r.schema_version!==1||!r.scan_id||!r.collected_at||!r.device||!Array.isArray(r.device.components))throw new Error('Это не поддерживаемый отчёт GoRig версии 1');showReport(r,f.name,true);$('import-panel').hidden=false;$('target').value='';$('import-status').value='in_use';$('import-org').value='0';$('import-notes').value='';$('preview').hidden=true;clear($('diff'));$('import').disabled=true;}catch(e){if(f!==selectedFile)return;selectedFile=null;currentReport=null;renderFiles();$('file-error').textContent='Не удалось открыть файл: '+e.message;}}
+  try{if(f.size>7*1024*1024)throw new Error('Файл больше 7 МБ');const r=JSON.parse(await f.text());if(f!==selectedFile)return;if(!r||r.schema_version!==1||!r.scan_id||!r.collected_at||!r.device||!Array.isArray(r.device.components))throw new Error('Это не поддерживаемый отчёт GoRig версии 1');showReport(r,f.name,true);$('import-panel').hidden=false;$('target').value='';$('import-status').value='in_use';$('import-org').value='0';$('import-notes').value='';$('import-identification').value='';$('import-device-type').value='';$('preview').hidden=true;clear($('diff'));$('import').disabled=true;}catch(e){if(f!==selectedFile)return;selectedFile=null;currentReport=null;renderFiles();$('file-error').textContent='Не удалось открыть файл: '+e.message;}}
 const statusText={new:'Новый компьютер. Проверьте отчёт и нажмите «Добавить в базу».',changed:'Найдены отличия от последнего сохранённого обследования.',unchanged:'Отличий среди сравниваемых данных нет. Новое обследование не будет добавлено.',duplicate:'Этот отчёт уже есть в базе (компьютер ID ',older:'Отчёт старше последнего сохранённого обследования. Для защиты текущего состояния он не будет добавлен.'};
 async function runPreview(){const token=++previewSerial;$('import').disabled=true;clear($('diff'));if(!currentReport||$('target').value===''){$('preview').hidden=true;return;}$('preview').hidden=false;$('preview').className='alert alert-info mt-3';$('preview').textContent='Сравнение…';try{const p=await api('/api/preview',jsonPost({asset_id:Number($('target').value),report:currentReport}));if(token!==previewSerial)return;$('preview').className='alert mt-3 '+(['new','changed'].includes(p.status)?'alert-success':'alert-warning');$('preview').textContent=statusText[p.status]+(p.status==='duplicate'?p.duplicate_asset_id+').':'')+(p.latest_at?'\nПоследнее сохранённое обследование: '+when(p.latest_at):'');$('import').disabled=!['new','changed'].includes(p.status);if(p.differences?.length){const t=node('table',undefined,'table table-sm align-middle');const head=node('tr');for(const s of ['Поле','В базе','В отчёте'])head.append(node('th',s));t.append(head);for(const d of p.differences){const tr=node('tr');for(const s of [d.field,d.before||'Нет данных',d.after||'Нет данных'])tr.append(node('td',s));t.append(tr);}$('diff').append(t);}}catch(e){if(token!==previewSerial)return;$('preview').className='alert alert-danger mt-3';$('preview').textContent='Ошибка: '+e.message;}}
-$('target').onchange=()=>{const a=assets.find(x=>String(x.id)===$('target').value);$('import-status').value=a?.status||'in_use';$('import-org').value=String(a?.organization_id||0);$('import-notes').value=a?.notes||'';runPreview();};
-$('import').onclick=async()=>{const target=$('target').value,report=currentReport,file=selectedFile;if(!report||target==='')return;const details={notes:$('import-notes').value,status:$('import-status').value,organization_id:Number($('import-org').value)};$('import').disabled=true;try{const res=await api('/api/import',jsonPost({asset_id:Number(target),report,details}));if(!['new','changed'].includes(res.preview.status)){await runPreview();return;}await reloadData();if(currentReport!==report||selectedFile!==file){notify('Отчёт добавлен. Компьютер ID '+res.asset_id+'.','success');return;}selectedFile=null;currentReport=null;location.hash='#/asset/'+res.asset_id;notify('Отчёт добавлен в базу.','success');}catch(e){$('preview').className='alert alert-danger mt-3';$('preview').hidden=false;$('preview').textContent='Ошибка импорта: '+e.message;}};
-$('shutdown').onclick=async()=>{if(serverStopped||!confirm((dirty()?'Есть несохранённые изменения заметки или статуса.\n\n':'')+'Остановить GoRig Base? Чтобы продолжить работу, программу нужно будет запустить снова.'))return;try{await api('/api/shutdown',jsonPost({}));serverStopped=true;$('shutdown').disabled=true;document.querySelector('.server-badge').textContent='Сервер остановлен';notify('GoRig Base остановлен. Чтобы продолжить работу, запустите программу снова.','warning');}catch(e){notify('Не удалось остановить сервер: '+e.message);}};
+$('target').onchange=()=>{const a=assets.find(x=>String(x.id)===$('target').value);$('import-status').value=a?.status||'in_use';$('import-org').value=String(a?.organization_id||0);$('import-notes').value=a?.notes||'';$('import-identification').value=a?.identification||'';$('import-device-type').value=a?.device_type||'';runPreview();};
+$('import').onclick=async()=>{const target=$('target').value,report=currentReport,file=selectedFile;if(!report||target==='')return;const details={notes:$('import-notes').value,status:$('import-status').value,organization_id:Number($('import-org').value),identification:$('import-identification').value,device_type:$('import-device-type').value};$('import').disabled=true;try{const res=await api('/api/import',jsonPost({asset_id:Number(target),report,details}));if(!['new','changed'].includes(res.preview.status)){await runPreview();return;}await reloadData();if(currentReport!==report||selectedFile!==file){notify('Отчёт добавлен. Компьютер ID '+res.asset_id+'.','success');return;}selectedFile=null;currentReport=null;location.hash='#/asset/'+res.asset_id;notify('Отчёт добавлен в базу.','success');}catch(e){$('preview').className='alert alert-danger mt-3';$('preview').hidden=false;$('preview').textContent='Ошибка импорта: '+e.message;}};
+let shutdownBusy=false;
+const shutdownModal=$('shutdown-modal');
+$('shutdown').onclick=()=>{if(serverStopped)return;$('shutdown-error').textContent='';$('shutdown-dirty').hidden=!dirty();bootstrap.Modal.getOrCreateInstance(shutdownModal).show();};
+shutdownModal.addEventListener('shown.bs.modal',()=>shutdownModal.querySelector('[data-bs-dismiss="modal"]').focus());
+shutdownModal.addEventListener('hide.bs.modal',e=>{if(shutdownBusy)e.preventDefault();});
+shutdownModal.addEventListener('hidden.bs.modal',()=>{if(serverStopped){document.querySelector('.app-shell').hidden=true;$('stopped-screen').hidden=false;document.title='GoRig Base остановлен';$('stopped-screen').querySelector('h1').focus();}else $('shutdown').focus();});
+$('shutdown-form').onsubmit=async e=>{e.preventDefault();if(shutdownBusy||serverStopped)return;shutdownBusy=true;$('shutdown-confirm').disabled=true;$('shutdown-error').textContent='';try{await api('/api/shutdown',jsonPost({}));serverStopped=true;shutdownBusy=false;bootstrap.Modal.getInstance(shutdownModal).hide();}catch(err){$('shutdown-error').textContent='Не удалось остановить сервер: '+err.message;}finally{shutdownBusy=false;$('shutdown-confirm').disabled=false;}};
 // Report data are loaded as a single database snapshot, never from stale cards.
 let reportSerial=0;
 function renderReportChoices(){
@@ -191,7 +209,7 @@ async function generatePrintableReport(id){
         if(!items.length)section.append(node('p','Нет компьютеров.','print-empty'));
         for(const [index,a] of items.entries()){
           const box=node('article',undefined,'print-computer'),report=a.report||{},d=report.device||{};
-          box.append(node('h4',(index+1)+'. '+a.name));
+          box.append(node('h4',(index+1)+'. '+displayName(a.name)));if(a.identification)printLine(box,'Идентификация',a.identification);if(a.device_type)printLine(box,'Тип устройства',deviceTypes[a.device_type]||a.device_type);
           const brief=[itemValue(d.manufacturer)?v(d.manufacturer):'',itemValue(d.model)?v(d.model):'',itemValue(d.os)?v(d.os):''].filter(Boolean).join(' · ')||'Нет данных';
           printLine(box,'Краткая информация',brief);
           printLine(box,'Заметка',a.notes?.trim()||'Нет заметки');
@@ -212,6 +230,7 @@ function printLine(root,label,value){const p=node('p',undefined,'print-line');p.
 $('report-all').onclick=()=>generatePrintableReport(null);
 $('print-report').onclick=()=>window.print();
 function route(){
+  if(serverStopped)return;
   if(reverting){reverting=false;return;}
   const hash=location.hash||'#/overview';
   if(lastHash&&hash!==lastHash&&dirty()&&!confirm('Есть несохранённые изменения заметки, организации или статуса. Перейти без сохранения?')){reverting=true;location.hash=lastHash;return;}
@@ -223,7 +242,7 @@ function route(){
   document.querySelectorAll('.page').forEach(el=>{el.hidden=el.id!=='page-'+currentPage;});
   document.querySelectorAll('[data-nav]').forEach(el=>el.classList.toggle('active',el.dataset.nav===(page==='asset'?'organizations':page)));
   const titles={overview:'Обзор',organizations:'Организации',asset:'Компьютер',import:'Импорт отчёта',reports:'Отчёты',settings:'Настройки'};
-  highlightSubmenu();$('breadcrumb').textContent=titles[page];$('breadcrumbs').hidden=['overview','organizations','settings'].includes(page);$('top-import').hidden=page!=='overview';
+  highlightSubmenu();$('breadcrumb').textContent=titles[page];$('breadcrumbs').hidden=['overview','organizations','settings','asset'].includes(page);$('top-import').hidden=page!=='overview';
   if(page==='overview'||currentPage==='organizations')renderOverview();
   document.body.classList.toggle('report-print-mode',page==='reports'&&!$('printable-report').hidden);
   if(page==='reports'){renderReportChoices();reportSerial++;$('printable-report').hidden=true;$('report-actions').hidden=true;$('report-message').textContent='';document.body.classList.remove('report-print-mode');}

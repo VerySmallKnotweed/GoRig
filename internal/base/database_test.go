@@ -477,3 +477,101 @@ func TestDashboardNavigationAndModalMarkup(t *testing.T) {
 		}
 	}
 }
+
+func TestIdentificationAndDeviceType(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "old.sqlite")
+	db, err := sql.Open("sqlite3", path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = db.Exec(`CREATE TABLE assets (id INTEGER PRIMARY KEY, name TEXT NOT NULL, notes TEXT NOT NULL DEFAULT '', status TEXT NOT NULL DEFAULT 'in_use', organization_id INTEGER);
+ INSERT INTO assets(id,name,notes,status) VALUES(10,'Legacy','keep','reserve');`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err = db.Close(); err != nil {
+		t.Fatal(err)
+	}
+	s := openTest(t, path)
+	got, err := s.Assets()
+	if err != nil || len(got) != 1 || got[0].Notes != "keep" || got[0].Status != "reserve" || got[0].Identification != "" || got[0].DeviceType != "" {
+		t.Fatalf("migration: %+v %v", got, err)
+	}
+	ident, typ := "  Кабинет 15 — Иванов  ", "laptop"
+	if err = s.SaveAssetDetails(10, AssetDetails{Notes: "keep", Identification: &ident, DeviceType: &typ}); err != nil {
+		t.Fatal(err)
+	}
+	if err = s.SaveNotes(10, "new notes"); err != nil {
+		t.Fatal(err)
+	} // Legacy API must preserve the new fields.
+	bad := "tablet"
+	if err = s.SaveAssetDetails(10, AssetDetails{Notes: "lost", DeviceType: &bad}); err == nil {
+		t.Fatal("invalid type accepted")
+	}
+	long := strings.Repeat("я", 81)
+	if err = s.SaveAssetDetails(10, AssetDetails{Notes: "lost", Identification: &long}); err == nil {
+		t.Fatal("long identification accepted")
+	}
+	if err = s.Close(); err != nil {
+		t.Fatal(err)
+	}
+	s = openTest(t, path)
+	defer s.Close()
+	got, err = s.Assets()
+	if err != nil || got[0].Identification != "Кабинет 15 — Иванов" || got[0].DeviceType != "laptop" || got[0].Notes != "new notes" {
+		t.Fatalf("persistence: %+v %v", got, err)
+	}
+	snapshot, err := s.PrintableSnapshot(0)
+	if err != nil || len(snapshot.Assets) != 1 || snapshot.Assets[0].Identification != got[0].Identification || snapshot.Assets[0].DeviceType != "laptop" {
+		t.Fatalf("print: %+v %v", snapshot, err)
+	}
+	empty := ""
+	if err = s.SaveAssetDetails(10, AssetDetails{Notes: "new notes", Identification: &empty, DeviceType: &empty}); err != nil {
+		t.Fatal(err)
+	}
+	got, _ = s.Assets()
+	if got[0].Identification != "" || got[0].DeviceType != "" {
+		t.Fatalf("clear: %+v", got[0])
+	}
+}
+
+func TestDeviceDetailsSurviveImportAndLegacyAPI(t *testing.T) {
+	s := openTest(t, filepath.Join(t.TempDir(), "db.sqlite"))
+	defer s.Close()
+	at := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	ident, typ := "Отдел кадров", "all_in_one"
+	_, id, err := s.ImportWithDetails(raw(t, fixture("detail-1", at)), 0, &AssetDetails{Notes: "note", Identification: &ident, DeviceType: &typ})
+	if err != nil {
+		t.Fatal(err)
+	}
+	next := fixture("detail-2", at.Add(time.Hour))
+	next.Device.Model.Value = "changed"
+	// Clients predating these fields must not erase them on re-import.
+	if _, _, err = s.ImportWithDetails(raw(t, next), id, &AssetDetails{Notes: "note 2"}); err != nil {
+		t.Fatal(err)
+	}
+	h := Handler(s)
+	r := httptest.NewRequest(http.MethodPut, fmt.Sprintf("http://localhost:8765/api/assets/%d", id), strings.NewReader(`{"notes":"note 3"}`))
+	r.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, r)
+	if w.Code != http.StatusOK {
+		t.Fatalf("legacy API: %d %s", w.Code, w.Body)
+	}
+	got, err := s.Assets()
+	if err != nil || len(got) != 1 || got[0].Identification != ident || got[0].DeviceType != typ || got[0].Notes != "note 3" || got[0].Count != 2 {
+		t.Fatalf("details lost: %+v %v", got, err)
+	}
+	invalid := strings.Repeat("a", 81)
+	r = httptest.NewRequest(http.MethodPut, fmt.Sprintf("http://localhost:8765/api/assets/%d", id), strings.NewReader(fmt.Sprintf(`{"notes":"bad","identification":%q}`, invalid)))
+	r.Header.Set("Content-Type", "application/json")
+	w = httptest.NewRecorder()
+	h.ServeHTTP(w, r)
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("long identification: %d", w.Code)
+	}
+	got, _ = s.Assets()
+	if got[0].Notes != "note 3" {
+		t.Fatal("invalid request changed data")
+	}
+}
