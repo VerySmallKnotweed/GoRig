@@ -67,10 +67,10 @@ function jsonPost(obj,method='POST'){return {method,headers:{'Content-Type':'app
 function notify(text,kind='danger'){const el=$('global-message');el.textContent=text;el.className='alert alert-'+kind;}
 const russianPlurals = new Intl.PluralRules('ru-RU');
 function computerCount(n){const forms={one:'компьютер',few:'компьютера',many:'компьютеров',other:'компьютера'};return n+' '+forms[russianPlurals.select(n)];}
-function orgName(id){return organizations.find(o=>o.id===id)?.name||(id?'Организация не найдена':'Без организации');}
+function orgName(id){return organizations.find(o=>o.id===id)?.name||(id?'Организация не найдена':'Непривязанные');}
 function fillOrganizations(){
-  for(const select of document.querySelectorAll('.org-select')){const old=select.value;clear(select);select.append(new Option('Без организации','0'));for(const o of organizations)select.append(new Option(o.name,String(o.id)));select.value=[...select.options].some(x=>x.value===old)?old:'0';}
-  const menu=$('org-nav');clear(menu);for(const o of organizations){const a=node('a',o.name);a.href='#/organizations/'+o.id;a.title=o.name;menu.append(a);}const unassigned=node('a','Без организации');unassigned.href='#/organizations/0';menu.append(unassigned);highlightSubmenu();
+  for(const select of document.querySelectorAll('.org-select')){const old=select.value;clear(select);select.append(new Option('Непривязанные','0'));for(const o of organizations)select.append(new Option(o.name,String(o.id)));select.value=[...select.options].some(x=>x.value===old)?old:'0';}
+  const menu=$('org-nav');clear(menu);for(const o of organizations){const a=node('a',o.name);a.href='#/organizations/'+o.id;a.title=o.name;menu.append(a);}const unassigned=node('a','Непривязанные');unassigned.href='#/organizations/0';menu.append(unassigned);highlightSubmenu();
 }
 function highlightSubmenu(){const hash=location.hash||'#/overview';for(const a of document.querySelectorAll('.nav-submenu a')){if(a.getAttribute('href')===hash)a.setAttribute('aria-current','page');else a.removeAttribute('aria-current');}}
 function stats(){
@@ -81,14 +81,14 @@ function renderOverview(){
   stats();
   for(const root of [$('organization-cards'),$('all-organization-cards')]){
     clear(root);
-    for(const o of [...organizations,{id:0,name:'Без организации'}]){
+    for(const o of [...organizations,{id:0,name:'Непривязанные'}]){
       const members=assets.filter(a=>a.organization_id===o.id);
       const card=node('a',undefined,'organization-card');card.href='#/organizations/'+o.id;
-      const head=node('div',undefined,'org-card-head');head.append(node('span','▤','org-card-icon'),node('span','Открыть →','org-card-link'));
+      const head=node('div',undefined,'org-card-head'),icon=node('span',o.id?undefined:'▤','org-card-icon');if(o.id)icon.append(document.querySelector('.nav-group-link[href="#/organizations"] svg').cloneNode(true));head.append(icon,node('span','Открыть →','org-card-link'));
       card.append(head,node('h3',o.name),node('p',computerCount(members.length),'org-total'));
       const breakdown=node('div',undefined,'org-breakdown');
-      for(const k of ['in_use','reserve','retired']){
-        const count=members.filter(a=>a.status===k).length, label=assetStatuses[k]+': '+count;
+      for(const k of ['all','in_use','reserve','retired']){
+        const count=k==='all'?members.length:members.filter(a=>a.status===k).length, label=(k==='all'?'Всего':assetStatuses[k])+': '+count;
         const part=node('span',String(count),'org-metric metric-'+k);part.title=label;part.setAttribute('role','img');part.setAttribute('aria-label',label);breakdown.append(part);
       }
       card.append(breakdown);root.append(card);
@@ -100,9 +100,9 @@ function renderOrganization(id){
   $('org-title').textContent=orgName(id);const members=assets.filter(a=>a.organization_id===id);$('org-subtitle').textContent=computerCount(members.length);
   const shown=members.filter(a=>$('filter').value==='all'||a.status===$('filter').value);$('org-count').textContent=shown.length+' / '+members.length;
   const root=$('asset-list');clear(root);if(!shown.length){root.append(node('div','В этой категории пока нет компьютеров.','surface subtle'));return;}
-  for(const a of shown){const card=node('a',undefined,'pc-card '+(a.cpu_vendor==='intel'?'pc-intel':a.cpu_vendor==='amd'?'pc-amd':'pc-unknown'));card.href='#/asset/'+a.id;
+  for(const a of shown){const card=node('a',undefined,'pc-card pc-state-'+a.status+' '+(a.cpu_vendor==='intel'?'pc-intel':a.cpu_vendor==='amd'?'pc-amd':'pc-unknown'));card.href='#/asset/'+a.id;card.setAttribute('aria-label',a.name+' — '+(assetStatuses[a.status]||a.status)+'. Подробнее');card.title=assetStatuses[a.status]||a.status;
     const top=node('div',undefined,'pc-card-top');top.append(node('span','▣','pc-icon'),node('span',a.cpu_vendor==='intel'?'INTEL':a.cpu_vendor==='amd'?'AMD':'ПРОЦЕССОР НЕ ОПРЕДЕЛЁН','cpu-badge'));card.append(top,node('h3',a.name),node('p',a.cpu||'Процессор: нет данных','pc-cpu'));
-    const foot=node('div',undefined,'pc-card-foot');foot.append(node('span',assetStatuses[a.status]||a.status,'status-'+a.status),node('span','Подробнее →'));card.append(foot);root.append(card);
+    const foot=node('div',undefined,'pc-card-foot');foot.append(node('span','ПОДРОБНЕЕ →'));card.append(foot);root.append(card);
   }
 }
 function renderSettings(){
@@ -142,7 +142,7 @@ for(const kind of ['rename','delete']){
   };
 }
 $('org-form').onsubmit=async e=>{e.preventDefault();try{await api('/api/organizations',jsonPost({name:$('org-name').value}));$('org-name').value='';await reloadData();$('org-message').textContent='Организация создана.';}catch(err){$('org-message').textContent='Ошибка: '+err.message;}};
-async function reloadData(){[organizations,assets]=await Promise.all([api('/api/organizations'),api('/api/assets')]);fillOrganizations();renderOverview();renderSettings();const target=$('target'),old=target.value;clear(target);target.append(new Option('— Выберите действие —',''),new Option('Новый компьютер','0'));for(const a of assets)target.append(new Option(a.name+' (ID '+a.id+', '+orgName(a.organization_id)+')',String(a.id)));target.value=old;if(currentPage==='organization')renderOrganization(activeOrg);}
+async function reloadData(){[organizations,assets]=await Promise.all([api('/api/organizations'),api('/api/assets')]);fillOrganizations();renderOverview();renderSettings();renderReportChoices();const target=$('target'),old=target.value;clear(target);target.append(new Option('— Выберите действие —',''),new Option('Новый компьютер','0'));for(const a of assets)target.append(new Option(a.name+' (ID '+a.id+', '+orgName(a.organization_id)+')',String(a.id)));target.value=old;if(currentPage==='organization')renderOrganization(activeOrg);}
 $('filter').onchange=()=>renderOrganization(activeOrg);
 for(const [button,menu] of [['org-toggle','org-nav'],['reports-toggle','reports-nav']]){
   $(button).onclick=()=>{const el=$(menu);el.hidden=!el.hidden;$(button).setAttribute('aria-expanded',String(!el.hidden));};
@@ -167,6 +167,50 @@ async function runPreview(){const token=++previewSerial;$('import').disabled=tru
 $('target').onchange=()=>{const a=assets.find(x=>String(x.id)===$('target').value);$('import-status').value=a?.status||'in_use';$('import-org').value=String(a?.organization_id||0);$('import-notes').value=a?.notes||'';runPreview();};
 $('import').onclick=async()=>{const target=$('target').value,report=currentReport,file=selectedFile;if(!report||target==='')return;const details={notes:$('import-notes').value,status:$('import-status').value,organization_id:Number($('import-org').value)};$('import').disabled=true;try{const res=await api('/api/import',jsonPost({asset_id:Number(target),report,details}));if(!['new','changed'].includes(res.preview.status)){await runPreview();return;}await reloadData();if(currentReport!==report||selectedFile!==file){notify('Отчёт добавлен. Компьютер ID '+res.asset_id+'.','success');return;}selectedFile=null;currentReport=null;location.hash='#/asset/'+res.asset_id;notify('Отчёт добавлен в базу.','success');}catch(e){$('preview').className='alert alert-danger mt-3';$('preview').hidden=false;$('preview').textContent='Ошибка импорта: '+e.message;}};
 $('shutdown').onclick=async()=>{if(serverStopped||!confirm((dirty()?'Есть несохранённые изменения заметки или статуса.\n\n':'')+'Остановить GoRig Base? Чтобы продолжить работу, программу нужно будет запустить снова.'))return;try{await api('/api/shutdown',jsonPost({}));serverStopped=true;$('shutdown').disabled=true;document.querySelector('.server-badge').textContent='Сервер остановлен';notify('GoRig Base остановлен. Чтобы продолжить работу, запустите программу снова.','warning');}catch(e){notify('Не удалось остановить сервер: '+e.message);}};
+// Report data are loaded as a single database snapshot, never from stale cards.
+let reportSerial=0;
+function renderReportChoices(){
+  const root=$('report-organizations');clear(root);
+  for(const o of [...organizations,{id:0,name:'Непривязанные'}]){
+    const b=node('button',o.name,'btn btn-outline-secondary report-org-button');b.type='button';b.onclick=()=>generatePrintableReport(o.id);root.append(b);
+  }
+}
+async function generatePrintableReport(id){
+  const serial=++reportSerial,root=$('printable-report');root.hidden=true;$('report-actions').hidden=true;document.body.classList.remove('report-print-mode');$('report-message').textContent='Подготовка отчёта…';
+  try{
+    const data=await api('/api/print-report'+(id===null?'':'?organization_id='+encodeURIComponent(id)));
+    if(serial!==reportSerial)return;
+    clear(root);root.append(node('h1',id===null?'Сводный отчёт по оборудованию':'Отчёт по организации'));
+    root.append(node('p','Всего: '+computerCount(data.assets.length),'print-summary'),node('p','Сформирован: '+when(new Date().toISOString())));
+    for(const org of data.organizations){
+      const group=node('section',undefined,'print-org');const members=data.assets.filter(a=>a.organization_id===org.id);
+      group.append(node('h2',org.name+' — '+computerCount(members.length)));
+      for(const status of ['in_use','reserve','retired']){
+        const items=members.filter(a=>a.status===status),section=node('section',undefined,'print-status');
+        section.append(node('h3',assetStatuses[status]+' — '+computerCount(items.length)));
+        if(!items.length)section.append(node('p','Нет компьютеров.','print-empty'));
+        for(const [index,a] of items.entries()){
+          const box=node('article',undefined,'print-computer'),report=a.report||{},d=report.device||{};
+          box.append(node('h4',(index+1)+'. '+a.name));
+          const brief=[itemValue(d.manufacturer)?v(d.manufacturer):'',itemValue(d.model)?v(d.model):'',itemValue(d.os)?v(d.os):''].filter(Boolean).join(' · ')||'Нет данных';
+          printLine(box,'Краткая информация',brief);
+          printLine(box,'Заметка',a.notes?.trim()||'Нет заметки');
+          const cpu=byType(report,'processor');printLine(box,'Процессор',cpu.length?cpu.map(c=>itemValue(c.name)?v(c.name):v(c.model)).join('; '):'Нет данных');
+          printLine(box,'Память',installedMemory(report));
+          const disks=byType(report,'disk');printLine(box,'Накопители',disks.length?disks.map(c=>(itemValue(c.model)||itemValue(c.name)?shortComponent(c)+' — ':'')+formatted(c.attributes?.capacity_bytes,'capacity_bytes')).join('; '):'Нет данных');
+          section.append(box);
+        }
+        group.append(section);
+      }
+      root.append(group);
+    }
+    const sign=node('div',undefined,'print-signature');sign.append(node('p','Дата: «____» __________________ 20____ г.'),node('p','Подпись: _____________________ / _____________________'));root.append(sign);
+    $('report-message').textContent='';root.hidden=false;$('report-actions').hidden=false;if(currentPage==='reports')document.body.classList.add('report-print-mode');
+  }catch(e){if(serial!==reportSerial)return;$('report-message').textContent='Не удалось подготовить отчёт: '+e.message;}
+}
+function printLine(root,label,value){const p=node('p',undefined,'print-line');p.append(node('strong',label+': '),document.createTextNode(value));root.append(p);}
+$('report-all').onclick=()=>generatePrintableReport(null);
+$('print-report').onclick=()=>window.print();
 function route(){
   if(reverting){reverting=false;return;}
   const hash=location.hash||'#/overview';
@@ -181,6 +225,8 @@ function route(){
   const titles={overview:'Обзор',organizations:'Организации',asset:'Компьютер',import:'Импорт отчёта',reports:'Отчёты',settings:'Настройки'};
   highlightSubmenu();$('breadcrumb').textContent=titles[page];$('breadcrumbs').hidden=['overview','organizations','settings'].includes(page);$('top-import').hidden=page!=='overview';
   if(page==='overview'||currentPage==='organizations')renderOverview();
+  document.body.classList.toggle('report-print-mode',page==='reports'&&!$('printable-report').hidden);
+  if(page==='reports'){renderReportChoices();reportSerial++;$('printable-report').hidden=true;$('report-actions').hidden=true;$('report-message').textContent='';document.body.classList.remove('report-print-mode');}
   if(page==='settings')renderSettings();
   if(currentPage==='organization')renderOrganization(Number(parts[1]));
   if(page==='asset'){$('asset-report-slot').append($('report-panel'));openAsset(Number(parts[1]));}

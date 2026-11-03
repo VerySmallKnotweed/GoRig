@@ -318,3 +318,51 @@ body { background: #f5f7fa; }
 }
 
 .nav-submenu a[aria-current="page"] { color: #fff; background: rgba(255,255,255,.12); }
+
+/* Organization counters use the same four colours as the overview. */
+.org-breakdown { grid-template-columns: repeat(4,minmax(0,1fr)); }
+.metric-all { color: #084298; background: #dceaff; }
+.org-card-icon svg { width: 21px; height: 21px; }
+
+/* The card background shows the inventory state; CPU badges remain independent. */
+.pc-card.pc-state-in_use { background: #edf8f1; border-color: #b9ddc8; border-top-color: #198754; }
+.pc-card.pc-state-reserve { background: #fff8df; border-color: #ead79b; border-top-color: #d39e00; }
+.pc-card.pc-state-retired { background: #fff0f1; border-color: #edc1c6; border-top-color: #dc3545; }
+.pc-card.pc-state-in_use:hover, .pc-card.pc-state-reserve:hover, .pc-card.pc-state-retired:hover { box-shadow: 0 3px 8px #00000025; }
+.pc-card-foot { justify-content: center; font-weight: 700; letter-spacing: .04em; }
+.pc-state-in_use .pc-card-foot { color: #146c43; border-color: #b9ddc8; }
+.pc-state-reserve .pc-card-foot { color: #705500; border-color: #ead79b; }
+.pc-state-retired .pc-card-foot { color: #b02a37; border-color: #edc1c6; }
+
+.report-organization-list { display: flex; flex-wrap: wrap; gap: 8px; }
+.report-org-button { text-align: left; overflow-wrap: anywhere; }
+.report-all { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 18px; padding-top: 18px; border-top: 1px solid var(--line); }
+.report-message { margin: 12px 0; color: #9b2934; }
+.report-message:empty { display: none; }
+.report-actions { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin: 20px 0 10px; font-weight: 700; }
+.printable-report { padding: 28px; border: 1px solid var(--line); background: #fff; color: #111; font: 400 12pt/1.4 Roboto, "Segoe UI", sans-serif; overflow-wrap: anywhere; }
+.printable-report h1 { margin: 0 0 8px; font-size: 14pt; font-weight: 700; }
+.printable-report h2 { margin: 24px 0 12px; font-size: 14pt; font-weight: 700; }
+.printable-report h3 { margin: 18px 0 8px; font-size: 12pt; font-weight: 700; }
+.printable-report h4 { margin: 0 0 6px; font-size: 12pt; font-weight: 700; }
+.printable-report p { margin: 3px 0; }
+.print-summary { margin-bottom: 14px !important; }
+.print-computer { margin: 0 0 14px; padding: 0 0 10px; border-bottom: 1px solid #ccc; }
+.print-line { white-space: pre-wrap; }
+.print-empty { color: #555; }
+.print-signature { margin-top: 30px; }
+.print-signature p { margin: 14px 0; }
+@page { size: A4; margin: 15mm; }
+@media print {
+  body.report-print-mode { background: #fff; color: #000; }
+  body.report-print-mode .sidebar, body.report-print-mode .topbar, body.report-print-mode .app-footer,
+  body.report-print-mode #global-message, body.report-print-mode .report-controls,
+  body.report-print-mode #page-reports > .page-heading, body.report-print-mode .report-message,
+  body.report-print-mode .report-actions, body.report-print-mode #report-storage { display: none !important; }
+  body.report-print-mode .workspace, body.report-print-mode .content { margin: 0 !important; padding: 0 !important; width: auto !important; min-height: 0 !important; }
+  body.report-print-mode .printable-report { border: 0; padding: 0; font-size: 12pt; }
+  body.report-print-mode .print-computer, body.report-print-mode .print-signature { break-inside: avoid; }
+  body.report-print-mode .print-org h2, body.report-print-mode .print-status h3 { break-after: avoid; }
+}
+.org-metric { display: grid; place-items: center; width: 100%; max-width: 50px; aspect-ratio: 1; padding: 0; }
+.report-org-button { max-width: 100%; white-space: normal; }

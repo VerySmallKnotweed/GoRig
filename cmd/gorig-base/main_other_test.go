@@ -33,7 +33,7 @@ func TestWebShutdownStopsServer(t *testing.T) {
 		}
 	})}
 	done := make(chan error, 1)
-	go func() { done <- runServer(server, listener, "", stop) }()
+	go func() { done <- runServer(server, listener, "", stop, nil) }()
 	url := "http://127.0.0.1:" + strconv.Itoa(listener.Addr().(*net.TCPAddr).Port) + "/api/shutdown"
 	response, err := http.Post(url, "application/json", strings.NewReader("{}"))
 	if err != nil {

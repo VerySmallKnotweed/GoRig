@@ -47,7 +47,7 @@ func main() {
 		}
 	}
 	server := &http.Server{Handler: base.HandlerWithShutdown(store, requestShutdown), ReadHeaderTimeout: 10 * time.Second}
-	if err := runServer(server, listener, address, stop); err != nil {
+	if err := runServer(server, listener, address, stop, store.Organizations); err != nil {
 		console.Error(diagnostics, "Ошибка работы программы: "+err.Error())
 	}
 }

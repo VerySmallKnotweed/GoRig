@@ -16,3 +16,6 @@ require (
 	github.com/ncruces/julianday v1.0.0 // indirect
 	github.com/tetratelabs/wazero v1.9.0 // indirect
 )
+
+// Local v0.3.0 patch: refresh the menu for Windows version-4 WM_CONTEXTMENU.
+replace github.com/gogpu/systray => ./third_party/systray

@@ -8,9 +8,11 @@ import (
 	"net"
 	"net/http"
 	"time"
+
+	"GoRig/internal/base"
 )
 
-func runServer(server *http.Server, listener net.Listener, _ string, stop <-chan struct{}) error {
+func runServer(server *http.Server, listener net.Listener, _ string, stop <-chan struct{}, _ func() ([]base.Organization, error)) error {
 	result := make(chan error, 1)
 	go func() { result <- server.Serve(listener) }()
 	select {

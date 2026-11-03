@@ -13,30 +13,47 @@ import (
 	"sync"
 	"time"
 
+	"GoRig/internal/base"
 	"GoRig/internal/icons"
 
 	"github.com/gogpu/systray"
 )
 
-func runServer(server *http.Server, listener net.Listener, address string, stop <-chan struct{}) error {
+func runServer(server *http.Server, listener net.Listener, address string, stop <-chan struct{}, organizations func() ([]base.Organization, error)) error {
 	// The Win32 window and its message loop must use the same OS thread.
 	runtime.LockOSThread()
 	defer runtime.UnlockOSThread()
 	tray := systray.New()
 	var stopTray sync.Once
 	removeTray := func() { stopTray.Do(tray.Remove) }
-	menu := systray.NewMenu()
-	menu.Add("Выход", removeTray)
-	tray.SetIcon(icons.BasePNG).SetTooltip("GoRig Base").SetMenu(menu)
-	tray.OnClick(func() {
+	openURL := func(url string) {
 		// Shell handler opens the URL in the user's default browser.
-		cmd := exec.Command("rundll32.exe", "url.dll,FileProtocolHandler", address)
+		cmd := exec.Command("rundll32.exe", "url.dll,FileProtocolHandler", url)
 		if err := cmd.Start(); err != nil {
-			log.Printf("Не удалось открыть браузер: %v. Адрес: %s", err, address)
+			log.Printf("Не удалось открыть браузер: %v. Адрес: %s", err, url)
 		} else {
 			go func() { _ = cmd.Wait() }()
 		}
-	})
+	}
+	refreshMenu := func() {
+		menu := systray.NewMenu()
+		orgs, err := organizations()
+		if err != nil {
+			log.Printf("Не удалось загрузить организации для меню трея: %v", err)
+		} else {
+			for _, entry := range organizationMenuEntries(address, orgs) {
+				url := entry.URL
+				menu.Add(entry.Label, func() { openURL(url) })
+			}
+			menu.AddSeparator()
+		}
+		menu.Add("Выход", removeTray)
+		tray.SetMenu(menu)
+	}
+	tray.SetIcon(icons.BasePNG).SetTooltip("GoRig Base")
+	refreshMenu()
+	tray.OnRightClick(refreshMenu)
+	tray.OnClick(func() { openURL(address) })
 	tray.Show()
 	serveResult := make(chan error, 1)
 	go func() {

@@ -147,6 +147,20 @@ func (s *server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+	if r.URL.Path == "/api/print-report" && r.Method == http.MethodGet {
+		scope := int64(-1)
+		if raw := r.URL.Query().Get("organization_id"); raw != "" {
+			id, err := strconv.ParseInt(raw, 10, 64)
+			if err != nil || id < 0 {
+				http.Error(w, "неверный ID организации", http.StatusBadRequest)
+				return
+			}
+			scope = id
+		}
+		out, err := s.store.PrintableSnapshot(scope)
+		respond(w, out, err)
+		return
+	}
 	if r.URL.Path == "/api/assets" && r.Method == http.MethodGet {
 		assets, err := s.store.Assets()
 		respond(w, assets, err)
