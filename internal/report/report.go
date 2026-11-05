@@ -17,12 +17,13 @@ type Report struct {
 }
 
 type Device struct {
-	ComputerName Value       `json:"computer_name"`
-	Manufacturer Value       `json:"manufacturer"`
-	Model        Value       `json:"model"`
-	SerialNumber Value       `json:"serial_number"`
-	OS           Value       `json:"os"`
-	Components   []Component `json:"components"`
+	ComputerName Value            `json:"computer_name"`
+	Manufacturer Value            `json:"manufacturer"`
+	Model        Value            `json:"model"`
+	SerialNumber Value            `json:"serial_number"`
+	OS           Value            `json:"os"`
+	Components   []Component      `json:"components"`
+	Attributes   map[string]Value `json:"attributes,omitempty"`
 }
 
 type Component struct {
@@ -31,6 +32,8 @@ type Component struct {
 	Manufacturer Value  `json:"manufacturer"`
 	Model        Value  `json:"model"`
 	SerialNumber Value  `json:"serial_number"`
+	// Optional, type-specific properties. Existing reports remain valid.
+	Attributes map[string]Value `json:"attributes,omitempty"`
 }
 
 type Value struct {

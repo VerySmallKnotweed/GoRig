@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os/exec"
 	"strings"
+	"syscall"
 
 	"GoRig/internal/report"
 
@@ -21,15 +22,22 @@ type computerSystemWMI struct {
 }
 
 type processorWMI struct {
-	Name         string
-	Manufacturer string
+	Name                      string
+	Manufacturer              string
+	NumberOfCores             uint32
+	NumberOfLogicalProcessors uint32
+	MaxClockSpeed             uint32
 }
 
 type diskDriveWMI struct {
-	Name         string
-	Manufacturer string
-	Model        string
-	SerialNumber string
+	Name          string
+	Manufacturer  string
+	Model         string
+	SerialNumber  string
+	Size          uint64
+	InterfaceType string
+	PNPDeviceID   string
+	MediaType     string
 }
 
 type biosWMI struct {
@@ -37,7 +45,9 @@ type biosWMI struct {
 }
 
 func collectOS() report.Value {
-	output, err := exec.Command("cmd.exe", "/d", "/c", "ver").Output()
+	cmd := exec.Command("cmd.exe", "/d", "/c", "ver")
+	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
+	output, err := cmd.Output()
 	if err != nil {
 		return report.Value{
 			Value:  "Windows",
@@ -240,8 +250,8 @@ func selectPrimaryValue(observations []report.Observation) report.Value {
 
 func collectProcessors() []report.Component {
 	var processors []processorWMI
-	err := wmi.Query(
-		"SELECT Name, Manufacturer FROM Win32_Processor",
+	err := queryInventory(
+		"SELECT Name, Manufacturer, NumberOfCores, NumberOfLogicalProcessors, MaxClockSpeed FROM Win32_Processor",
 		&processors,
 	)
 	if err != nil {
@@ -287,6 +297,11 @@ func collectProcessors() []report.Component {
 			Manufacturer: selectPrimaryValue([]report.Observation{makeObservation(processor.Manufacturer, manufacturerSource)}),
 			Model:        report.Value{Status: "not_collected"},
 			SerialNumber: report.Value{Status: "not_collected"},
+			Attributes: map[string]report.Value{
+				"cores":              wmiNumber(uint64(processor.NumberOfCores), "WMI Win32_Processor.NumberOfCores"),
+				"logical_processors": wmiNumber(uint64(processor.NumberOfLogicalProcessors), "WMI Win32_Processor.NumberOfLogicalProcessors"),
+				"max_clock_mhz":      wmiNumber(uint64(processor.MaxClockSpeed), "WMI Win32_Processor.MaxClockSpeed"),
+			},
 		})
 	}
 
@@ -295,8 +310,8 @@ func collectProcessors() []report.Component {
 
 func collectDiskDrives() []report.Component {
 	var drives []diskDriveWMI
-	err := wmi.Query(
-		"SELECT Name, Manufacturer, Model, SerialNumber FROM Win32_DiskDrive",
+	err := queryInventory(
+		"SELECT Name, Manufacturer, Model, SerialNumber, Size, InterfaceType, MediaType, PNPDeviceID FROM Win32_DiskDrive",
 		&drives,
 	)
 
@@ -348,8 +363,136 @@ func collectDiskDrives() []report.Component {
 			SerialNumber: selectPrimaryValue([]report.Observation{
 				makeObservation(drive.SerialNumber, "WMI Win32_DiskDrive.SerialNumber"),
 			}),
+			Attributes: map[string]report.Value{
+				"capacity_bytes": wmiNumber(drive.Size, "WMI Win32_DiskDrive.Size"),
+				"interface_type": wmiString(drive.InterfaceType, "WMI Win32_DiskDrive.InterfaceType"),
+				"pnp_device_id":  wmiString(drive.PNPDeviceID, "WMI Win32_DiskDrive.PNPDeviceID"),
+				"media_type":     wmiString(drive.MediaType, "WMI Win32_DiskDrive.MediaType"),
+			},
 		})
 	}
 
+	return components
+}
+
+// Null properties are common in firmware; leave them as zero values rather
+// than failing the entire query when an individual field is missing.
+var nullableWMI = &wmi.Client{NonePtrZero: true}
+
+var queryInventory = func(query string, dst interface{}) error {
+	return nullableWMI.Query(query, dst)
+}
+
+type physicalMemoryWMI struct {
+	Manufacturer  string
+	PartNumber    string
+	SerialNumber  string
+	DeviceLocator string
+	Capacity      uint64
+	Speed         uint32
+}
+
+type baseboardWMI struct {
+	Manufacturer string
+	Product      string
+	SerialNumber string
+}
+
+type videoControllerWMI struct {
+	Name                 string
+	AdapterCompatibility string
+	DriverVersion        string
+	PNPDeviceID          string
+	AdapterRAM           uint32
+}
+
+// queryFailure represents an unsuccessful query without confusing it with
+// an actually installed component. Details remain in the observations.
+func queryFailure(componentType, source string, err error) []report.Component {
+	observation := report.Observation{Source: source, Status: "unavailable", Raw: "query returned no instances"}
+	if err != nil {
+		observation.Status = "error"
+		observation.Raw = err.Error()
+	}
+	value := selectPrimaryValue([]report.Observation{observation})
+	return []report.Component{{Type: componentType, Name: value,
+		Manufacturer: value, Model: value, SerialNumber: value}}
+}
+
+func wmiString(value, source string) report.Value {
+	return selectPrimaryValue([]report.Observation{makeObservation(value, source)})
+}
+
+// Zero is also how WMI null/unspecified numeric properties are decoded.
+func wmiNumber(value uint64, source string) report.Value {
+	if value == 0 {
+		return wmiString("", source)
+	}
+	return wmiString(fmt.Sprintf("%d", value), source)
+}
+
+func collectMemory() []report.Component {
+	var modules []physicalMemoryWMI
+	err := queryInventory("SELECT Manufacturer, PartNumber, SerialNumber, DeviceLocator, Capacity, Speed FROM Win32_PhysicalMemory", &modules)
+	if err != nil || len(modules) == 0 {
+		return queryFailure("memory", "WMI Win32_PhysicalMemory", err)
+	}
+	components := make([]report.Component, 0, len(modules))
+	for _, module := range modules {
+		components = append(components, report.Component{
+			Type:         "memory",
+			Name:         wmiString(module.DeviceLocator, "WMI Win32_PhysicalMemory.DeviceLocator"),
+			Manufacturer: wmiString(module.Manufacturer, "WMI Win32_PhysicalMemory.Manufacturer"),
+			Model:        wmiString(module.PartNumber, "WMI Win32_PhysicalMemory.PartNumber"),
+			SerialNumber: wmiString(module.SerialNumber, "WMI Win32_PhysicalMemory.SerialNumber"),
+			Attributes: map[string]report.Value{
+				"capacity_bytes": wmiNumber(module.Capacity, "WMI Win32_PhysicalMemory.Capacity"),
+				"speed_mhz":      wmiNumber(uint64(module.Speed), "WMI Win32_PhysicalMemory.Speed"),
+			},
+		})
+	}
+	return components
+}
+
+func collectBaseboards() []report.Component {
+	var boards []baseboardWMI
+	err := queryInventory("SELECT Manufacturer, Product, SerialNumber FROM Win32_BaseBoard", &boards)
+	if err != nil || len(boards) == 0 {
+		return queryFailure("motherboard", "WMI Win32_BaseBoard", err)
+	}
+	components := make([]report.Component, 0, len(boards))
+	for _, board := range boards {
+		components = append(components, report.Component{
+			Type:         "motherboard",
+			Name:         wmiString(board.Product, "WMI Win32_BaseBoard.Product"),
+			Manufacturer: wmiString(board.Manufacturer, "WMI Win32_BaseBoard.Manufacturer"),
+			Model:        wmiString(board.Product, "WMI Win32_BaseBoard.Product"),
+			SerialNumber: wmiString(board.SerialNumber, "WMI Win32_BaseBoard.SerialNumber"),
+		})
+	}
+	return components
+}
+
+func collectVideoControllers() []report.Component {
+	var controllers []videoControllerWMI
+	err := queryInventory("SELECT Name, AdapterCompatibility, DriverVersion, PNPDeviceID, AdapterRAM FROM Win32_VideoController", &controllers)
+	if err != nil || len(controllers) == 0 {
+		return queryFailure("video", "WMI Win32_VideoController", err)
+	}
+	components := make([]report.Component, 0, len(controllers))
+	for _, controller := range controllers {
+		components = append(components, report.Component{
+			Type:         "video",
+			Name:         wmiString(controller.Name, "WMI Win32_VideoController.Name"),
+			Manufacturer: wmiString(controller.AdapterCompatibility, "WMI Win32_VideoController.AdapterCompatibility"),
+			Model:        report.Value{Status: "not_collected"},
+			SerialNumber: report.Value{Status: "not_collected"},
+			Attributes: map[string]report.Value{
+				"driver_version":     wmiString(controller.DriverVersion, "WMI Win32_VideoController.DriverVersion"),
+				"pnp_device_id":      wmiString(controller.PNPDeviceID, "WMI Win32_VideoController.PNPDeviceID"),
+				"video_memory_bytes": wmiNumber(uint64(controller.AdapterRAM), "WMI Win32_VideoController.AdapterRAM"),
+			},
+		})
+	}
 	return components
 }
