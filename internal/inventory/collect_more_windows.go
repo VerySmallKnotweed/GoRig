@@ -13,6 +13,7 @@ import (
 type osDetailsWMI struct {
 	Caption        string
 	Version        string
+	BuildNumber    string
 	OSArchitecture string
 	InstallDate    string
 	SerialNumber   string
@@ -66,19 +67,21 @@ func collectDeviceAttributes() map[string]report.Value {
 		result["system_type"] = wmiString(systems[0].SystemType, "WMI Win32_ComputerSystem.SystemType")
 	}
 	var osInfo []osDetailsWMI
-	err = queryInventory("SELECT Caption, Version, OSArchitecture, InstallDate, SerialNumber FROM Win32_OperatingSystem", &osInfo)
+	err = queryInventory("SELECT Caption, Version, BuildNumber, OSArchitecture, InstallDate, SerialNumber FROM Win32_OperatingSystem", &osInfo)
 	if err != nil || len(osInfo) == 0 {
-		for _, key := range []string{"windows_name", "windows_version", "windows_architecture", "windows_install_date", "windows_product_id"} {
+		for _, key := range []string{"windows_name", "windows_version", "windows_build", "windows_architecture", "windows_install_date", "windows_product_id"} {
 			result[key] = missingQuery("WMI Win32_OperatingSystem", err)
 		}
 	} else {
 		os := osInfo[0]
 		result["windows_name"] = wmiString(os.Caption, "WMI Win32_OperatingSystem.Caption")
 		result["windows_version"] = wmiString(os.Version, "WMI Win32_OperatingSystem.Version")
+		result["windows_build"] = wmiString(os.BuildNumber, "WMI Win32_OperatingSystem.BuildNumber")
 		result["windows_architecture"] = wmiString(os.OSArchitecture, "WMI Win32_OperatingSystem.OSArchitecture")
 		result["windows_install_date"] = wmiDate(os.InstallDate, "WMI Win32_OperatingSystem.InstallDate")
 		result["windows_product_id"] = wmiString(os.SerialNumber, "WMI Win32_OperatingSystem.SerialNumber")
 	}
+	result["windows_display_version"] = selectPrimaryValue([]report.Observation{readRegistryString(`SOFTWARE\Microsoft\Windows NT\CurrentVersion`, "DisplayVersion"), readRegistryString(`SOFTWARE\Microsoft\Windows NT\CurrentVersion`, "ReleaseId")})
 	result["windows_install_date"] = selectPrimaryValue(append([]report.Observation{readInstallDate()}, result["windows_install_date"].Observations...))
 	result["windows_product_id"] = selectPrimaryValue(append([]report.Observation{readRegistryString(`SOFTWARE\Microsoft\Windows NT\CurrentVersion`, "ProductId")}, result["windows_product_id"].Observations...))
 	deviceID := readRegistryString(`SOFTWARE\Microsoft\SQMClient`, "MachineId")

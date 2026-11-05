@@ -50,6 +50,7 @@ func Collect(collectorVersion string) (report.Report, error) {
 	result.Device.Components = append(result.Device.Components, collectFirmware()...)
 	result.Device.Components = append(result.Device.Components, collectLogicalVolumes()...)
 	result.Device.Components = append(result.Device.Components, collectPeripherals()...)
+	result.Device.Components = append(result.Device.Components, collectUSBDevices()...)
 
 	return result, nil
 }

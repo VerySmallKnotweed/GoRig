@@ -4,6 +4,7 @@ package inventory
 
 import (
 	"strconv"
+	"strings"
 
 	"GoRig/internal/report"
 	"github.com/yusufpapurcu/wmi"
@@ -104,6 +105,27 @@ func collectPeripherals() []report.Component {
 	}
 	for _, p := range printers {
 		out = append(out, report.Component{Type: "printer", Name: wmiString(p.Name, "WMI Win32_Printer.Name"), Manufacturer: report.Value{Status: "not_collected"}, Model: report.Value{Status: "not_collected"}, SerialNumber: report.Value{Status: "not_collected"}, Attributes: map[string]report.Value{"printer_driver": wmiString(p.DriverName, "WMI Win32_Printer.DriverName"), "printer_port": wmiString(p.PortName, "WMI Win32_Printer.PortName")}})
+	}
+	return out
+}
+
+// USB devices are point-in-time observations. Storage devices themselves are
+// collected by Win32_DiskDrive and are intentionally not duplicated here.
+type usbDeviceWMI struct{ Name, Manufacturer, PNPDeviceID, PNPClass, Service string }
+
+func collectUSBDevices() []report.Component {
+	var devices []usbDeviceWMI
+	err := queryInventory("SELECT Name, Manufacturer, PNPDeviceID, PNPClass, Service FROM Win32_PnPEntity WHERE PNPDeviceID LIKE 'USB%'", &devices)
+	if err != nil {
+		return queryFailure("usb", "WMI Win32_PnPEntity", err)
+	}
+	var out []report.Component
+	for _, d := range devices {
+		id := strings.ToUpper(strings.TrimSpace(d.PNPDeviceID))
+		if !strings.HasPrefix(id, `USB\`) || strings.EqualFold(d.PNPClass, "DiskDrive") || strings.EqualFold(d.Service, "USBSTOR") {
+			continue
+		}
+		out = append(out, report.Component{Type: "usb", Name: wmiString(d.Name, "WMI Win32_PnPEntity.Name"), Manufacturer: wmiString(d.Manufacturer, "WMI Win32_PnPEntity.Manufacturer"), Model: report.Value{Status: "not_collected"}, SerialNumber: report.Value{Status: "not_collected"}, Attributes: map[string]report.Value{"pnp_device_id": wmiString(d.PNPDeviceID, "WMI Win32_PnPEntity.PNPDeviceID"), "pnp_class": wmiString(d.PNPClass, "WMI Win32_PnPEntity.PNPClass")}})
 	}
 	return out
 }

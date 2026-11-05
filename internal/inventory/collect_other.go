@@ -38,3 +38,5 @@ func collectInstalledMemory(_ []report.Component) report.Value {
 }
 func collectLogicalVolumes() []report.Component { return nil }
 func collectPeripherals() []report.Component    { return nil }
+
+func collectUSBDevices() []report.Component { return nil }

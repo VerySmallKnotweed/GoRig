@@ -118,6 +118,8 @@ func componentLabel(kind string) string {
 		return "указательные устройства"
 	case "printer":
 		return "принтеры"
+	case "usb":
+		return "USB-устройства"
 	default:
 		return kind
 	}
@@ -126,17 +128,19 @@ func componentLabel(kind string) string {
 func attributeLabel(key string) string {
 	switch key {
 	case "capacity_bytes":
-		return "Объём, байт"
+		return "Объём, Б"
 	case "speed_mhz":
 		return "Скорость, МГц"
 	case "driver_version":
 		return "Версия драйвера"
 	case "pnp_device_id":
 		return "PNP ID"
+	case "pnp_class":
+		return "Класс устройства"
 	case "total_memory_bytes":
-		return "Доступная системе физическая память, байт"
+		return "Доступная системе физическая память, Б"
 	case "installed_memory_bytes":
-		return "Установленная физическая память, байт"
+		return "Установленная физическая память, Б"
 	case "windows_device_id":
 		return "Код устройства Windows (SQM)"
 	case "windows_product_id":
@@ -148,9 +152,9 @@ func attributeLabel(key string) string {
 	case "touch_support":
 		return "Перо и сенсорный ввод"
 	case "video_memory_bytes":
-		return "Видеопамять по данным WMI, байт"
+		return "Видеопамять по данным WMI, Б"
 	case "free_bytes":
-		return "Свободно на томе, байт"
+		return "Свободно на томе, Б"
 	case "filesystem":
 		return "Файловая система"
 	case "volume_type":
@@ -166,7 +170,11 @@ func attributeLabel(key string) string {
 	case "windows_name":
 		return "Редакция Windows"
 	case "windows_version":
+		return "Версия Windows (WMI)"
+	case "windows_display_version":
 		return "Версия Windows"
+	case "windows_build":
+		return "Сборка Windows"
 	case "windows_architecture":
 		return "Архитектура Windows"
 	case "windows_install_date":

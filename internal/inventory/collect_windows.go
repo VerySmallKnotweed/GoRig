@@ -36,6 +36,7 @@ type diskDriveWMI struct {
 	SerialNumber  string
 	Size          uint64
 	InterfaceType string
+	PNPDeviceID   string
 	MediaType     string
 }
 
@@ -310,7 +311,7 @@ func collectProcessors() []report.Component {
 func collectDiskDrives() []report.Component {
 	var drives []diskDriveWMI
 	err := queryInventory(
-		"SELECT Name, Manufacturer, Model, SerialNumber, Size, InterfaceType, MediaType FROM Win32_DiskDrive",
+		"SELECT Name, Manufacturer, Model, SerialNumber, Size, InterfaceType, MediaType, PNPDeviceID FROM Win32_DiskDrive",
 		&drives,
 	)
 
@@ -365,6 +366,7 @@ func collectDiskDrives() []report.Component {
 			Attributes: map[string]report.Value{
 				"capacity_bytes": wmiNumber(drive.Size, "WMI Win32_DiskDrive.Size"),
 				"interface_type": wmiString(drive.InterfaceType, "WMI Win32_DiskDrive.InterfaceType"),
+				"pnp_device_id":  wmiString(drive.PNPDeviceID, "WMI Win32_DiskDrive.PNPDeviceID"),
 				"media_type":     wmiString(drive.MediaType, "WMI Win32_DiskDrive.MediaType"),
 			},
 		})

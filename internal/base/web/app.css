@@ -356,7 +356,7 @@ body { background: #f5f7fa; }
 @media print {
   body.report-print-mode { background: #fff; color: #000; }
   body.report-print-mode .sidebar, body.report-print-mode .topbar, body.report-print-mode .app-footer,
-  body.report-print-mode #global-message, body.report-print-mode .report-controls,
+  body.report-print-mode .report-controls,
   body.report-print-mode #page-reports > .page-heading, body.report-print-mode .report-message,
   body.report-print-mode .report-actions, body.report-print-mode #report-storage { display: none !important; }
   body.report-print-mode .workspace, body.report-print-mode .content { margin: 0 !important; padding: 0 !important; width: auto !important; min-height: 0 !important; }
@@ -411,3 +411,50 @@ button, .btn, .filebutton, .history-btn, .asset, .nav-toggle { border-radius: 8p
   .asset-report #device, .asset-report .component-group { padding: 14px; }
   .asset-report .kv { grid-template-columns: minmax(90px,38%) minmax(0,1fr); }
 }
+
+/* Import is an ordered full-width workflow; report details are expandable. */
+.import-title { display: flex; align-items: baseline; flex-wrap: wrap; gap: 6px 16px; min-width: 0; }
+.import-title p { margin: 0; }
+.import-steps > .surface { width: 100%; }
+.import-fields { display: grid; grid-template-columns: repeat(auto-fit,minmax(min(100%,220px),1fr)); gap: 15px; }
+.import-notes-field { grid-column: 1 / -1; }
+.preview-status { padding: 12px 14px; border-left: 3px solid #0d6efd; background: #edf5ff; color: #284563; white-space: pre-line; border-radius: 6px; font-size: 12px; }
+.preview-success { border-color: #198754; background: #edf8f1; }
+.preview-warning { border-color: #d39e00; background: #fff8df; }
+.preview-error { border-color: #dc3545; background: #fff0f1; }
+.quality-note { padding: 12px 14px; border-radius: 6px; background: #fff8df; color: #705500; }
+.inventory-accordion { margin-top: 14px; border: 1px solid #dbe4ef; border-radius: 9px; background: #fff; overflow: hidden; }
+.inventory-accordion > summary { padding: 16px 18px; cursor: pointer; color: #26394c; font-size: 15px; font-weight: 700; list-style: none; }
+.inventory-accordion > summary::-webkit-details-marker { display: none; }
+.inventory-accordion > summary::after { content: '⌄'; float: right; color: #6c757d; font-size: 18px; }
+.inventory-accordion[open] > summary::after { transform: rotate(180deg); }
+.inventory-accordion[open] > summary { border-bottom: 1px solid #e5ebf2; background: #f7f9fc; }
+.inventory-body { padding: 18px; }
+.asset-report .inventory-body #device { padding: 0; margin: 0; border: 0; background: transparent; }
+.copy-action { margin-top: 16px; }
+.copy-status { margin-left: 10px; color: #198754; font-size: 12px; }
+.device-copy { margin-top: 14px; }
+.asset-report .component-group { border-left: 4px solid #8ca4be; }
+.asset-report .component-group[data-group="processor"], .asset-report .component-group[data-group="motherboard"] { border-left-color: #0d6efd; background: #f2f7ff; }
+.asset-report .component-group[data-group="memory"], .asset-report .component-group[data-group="disk"] { border-left-color: #198754; background: #f1f9f4; }
+.asset-report .component-group[data-group="usb"], .asset-report .component-group[data-group="removable"], .asset-report .component-group[data-group="disk-unknown"] { border-left-color: #c88c00; background: #fffaeb; }
+.asset-report .component-group[data-group="video"], .asset-report .component-group[data-group="monitor"] { border-left-color: #8758c8; background: #f7f3ff; }
+.asset-report .component-group[data-group="network"] { border-left-color: #168aa0; background: #f0fafb; }
+#message-text { white-space: pre-line; overflow-wrap: anywhere; }
+@media (max-width: 767px) {
+  .side-nav > .org-group { flex-basis: 135px; }
+  .side-nav > .reports-group { flex-basis: 100px; }
+  .import-title { gap: 5px; }
+  .inventory-body { padding: 14px; }
+  .inventory-accordion > summary { padding: 14px; }
+}
+@media (max-width: 767px) {
+  .side-nav { gap: 0; }
+  .side-nav > .org-group { flex-basis: 108px; }
+  .side-nav > .reports-group { flex-basis: 80px; }
+  .side-link, .nav-group-head .side-link { gap: 3px; padding-left: 2px; padding-right: 2px; font-size: 9px; }
+  .nav-icon { width: 11px; }
+  .nav-icon svg { width: 11px; height: 11px; }
+  .nav-toggle { flex-basis: 16px; width: 16px; }
+}
+@media (max-width: 767px) { .sidebar { padding-right: 2px; } }

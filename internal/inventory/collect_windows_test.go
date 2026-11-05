@@ -189,6 +189,9 @@ func TestExtendedInventory(t *testing.T) {
 	t.Cleanup(func() { readInstallDate, readRegistryString = oldDate, oldRegistry })
 	readInstallDate = func() report.Observation { return report.Observation{Source: "registry", Status: "unavailable"} }
 	readRegistryString = func(path, name string) report.Observation {
+		if name == "DisplayVersion" {
+			return report.Observation{Source: "registry", Status: "collected", Value: "23H2"}
+		}
 		return report.Observation{Source: "registry", Status: "unavailable"}
 	}
 	previous := queryInventory
@@ -198,7 +201,7 @@ func TestExtendedInventory(t *testing.T) {
 		case *[]computerMemoryWMI:
 			*result = []computerMemoryWMI{{TotalPhysicalMemory: 17179869184}}
 		case *[]osDetailsWMI:
-			*result = []osDetailsWMI{{Caption: "Windows 11 Pro", Version: "10.0", OSArchitecture: "64-bit", InstallDate: "20240625120100.000000+180"}}
+			*result = []osDetailsWMI{{Caption: "Windows 11 Pro", Version: "10.0", BuildNumber: "22631", OSArchitecture: "64-bit", InstallDate: "20240625120100.000000+180"}}
 		case *[]processorWMI:
 			*result = []processorWMI{{Name: "CPU", NumberOfCores: 4, NumberOfLogicalProcessors: 8, MaxClockSpeed: 3200}}
 		case *[]diskDriveWMI:
@@ -217,6 +220,9 @@ func TestExtendedInventory(t *testing.T) {
 	d := collectDeviceAttributes()
 	if d["total_memory_bytes"].Value != "17179869184" || d["windows_install_date"].Value != "2024-06-25" || d["windows_install_date"].Raw != "20240625120100.000000+180" {
 		t.Fatalf("device: %+v", d)
+	}
+	if d["windows_display_version"].Value != "23H2" || d["windows_build"].Value != "22631" {
+		t.Fatalf("Windows version/build: %+v", d)
 	}
 	cpus := collectProcessors()
 	if len(cpus) != 1 || cpus[0].Attributes["cores"].Value != "4" || cpus[0].Attributes["logical_processors"].Value != "8" {
@@ -324,5 +330,29 @@ func TestPeripheralTypesAndIndependentFailures(t *testing.T) {
 	}
 	if parts[0].Manufacturer.Value != "Vendor" || parts[0].Attributes["screen_width"].Value != "1920" || parts[1].Name.Observations[0].Status != "error" || parts[2].Name.Value != "Mouse" || parts[3].Name.Value != "Print to PDF" {
 		t.Fatalf("peripherals: %+v", parts)
+	}
+}
+
+func TestUSBInventoryAndDiskIDs(t *testing.T) {
+	previous := queryInventory
+	t.Cleanup(func() { queryInventory = previous })
+	queryInventory = func(query string, dst interface{}) error {
+		switch v := dst.(type) {
+		case *[]usbDeviceWMI:
+			*v = []usbDeviceWMI{{Name: "USB camera", PNPDeviceID: `USB\VID_1234`, PNPClass: "Image"}, {Name: "Flash", PNPDeviceID: `USB\VID_9876`, Service: "USBSTOR"}, {Name: "Disk", PNPDeviceID: `USBSTOR\Disk`, PNPClass: "DiskDrive"}}
+		case *[]diskDriveWMI:
+			*v = []diskDriveWMI{{Model: "Flash", InterfaceType: "USB", PNPDeviceID: `USBSTOR\Disk`}}
+		default:
+			return fmt.Errorf("unexpected: %s", query)
+		}
+		return nil
+	}
+	usb := collectUSBDevices()
+	if len(usb) != 1 || usb[0].Name.Value != "USB camera" || usb[0].Attributes["pnp_device_id"].Value != `USB\VID_1234` {
+		t.Fatalf("usb: %+v", usb)
+	}
+	disks := collectDiskDrives()
+	if len(disks) != 1 || disks[0].Attributes["pnp_device_id"].Value != `USBSTOR\Disk` {
+		t.Fatalf("disk: %+v", disks)
 	}
 }

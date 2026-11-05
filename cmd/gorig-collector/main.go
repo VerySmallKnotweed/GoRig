@@ -10,7 +10,7 @@ import (
 	"GoRig/internal/report"
 )
 
-const collectorVersion = "0.5.0"
+const collectorVersion = "0.6.0"
 
 func main() {
 	diagnostics, err := console.Setup(os.Args[1:])
